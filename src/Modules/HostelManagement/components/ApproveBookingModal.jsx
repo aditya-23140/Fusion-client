@@ -4,7 +4,6 @@
  */
 
 import React, { useState, useEffect } from "react";
-import PropTypes from "prop-types";
 import {
   Modal,
   Button,
@@ -194,24 +193,3 @@ export default function ApproveBookingModal({
     </Modal>
   );
 }
-
-ApproveBookingModal.propTypes = {
-  opened: PropTypes.bool.isRequired,
-  onClose: PropTypes.func.isRequired,
-  onSubmit: PropTypes.func.isRequired,
-  loading: PropTypes.bool,
-  booking: PropTypes.shape({
-    id: PropTypes.number,
-    guest_name: PropTypes.string,
-    guest_phone: PropTypes.string,
-    total_guest: PropTypes.number,
-    rooms_required: PropTypes.number,
-    arrival_date: PropTypes.string,
-    hall: PropTypes.number,
-  }),
-};
-
-ApproveBookingModal.defaultProps = {
-  loading: false,
-  booking: null,
-};

@@ -4,7 +4,6 @@
  */
 
 import React from "react";
-import PropTypes from "prop-types";
 import { Badge } from "@mantine/core";
 import DataTable from "./DataTable";
 
@@ -57,12 +56,3 @@ export default function ComplaintsTable({ complaints, loading }) {
     />
   );
 }
-
-ComplaintsTable.propTypes = {
-  complaints: PropTypes.array.isRequired,
-  loading: PropTypes.bool,
-};
-
-ComplaintsTable.defaultProps = {
-  loading: false,
-};

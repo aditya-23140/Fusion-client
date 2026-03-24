@@ -1,17 +1,27 @@
+/**
+ * GuestRoomBookings Feature
+ * Manages guest room bookings
+ */
+
 import React, { useState, useEffect, useCallback } from "react";
-import { Title, Button, Card, Tabs, Group } from "@mantine/core";
-import { IconPlus } from "@tabler/icons-react";
+import { Flex, Title, Button, Group, Alert, Tabs } from "@mantine/core";
+import {
+  IconPlus,
+  IconAlertCircle,
+  IconList,
+  IconUser,
+} from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import BookingsTable from "./components/BookingsTable";
 import CreateBookingModal from "./components/CreateBookingModal";
 import ApproveBookingModal from "./components/ApproveBookingModal";
 import {
-  fetchHalls,
   fetchBookings,
   fetchMyBookings,
   createBooking,
   approveBooking,
   rejectBooking,
+  fetchHalls,
 } from "./api";
 
 export default function GuestRoomBookings() {
@@ -20,14 +30,16 @@ export default function GuestRoomBookings() {
   const [halls, setHalls] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [approveModalOpen, setApproveModalOpen] = useState(false);
+  const [approvalModalOpen, setApprovalModalOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
-  const [activeTab, setActiveTab] = useState("my");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState("all");
 
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       const [bookingsData, myBookingsData, hallsData] = await Promise.all([
         fetchBookings(),
         fetchMyBookings(),
@@ -37,11 +49,8 @@ export default function GuestRoomBookings() {
       setMyBookings(myBookingsData);
       setHalls(hallsData);
     } catch (err) {
-      notifications.show({
-        title: "Error",
-        message: "Failed to load bookings",
-        color: "red",
-      });
+      setError("Failed to load bookings. Please try again.");
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -57,7 +66,7 @@ export default function GuestRoomBookings() {
       await createBooking(formData);
       notifications.show({
         title: "Success",
-        message: "Booking created",
+        message: "Booking request submitted successfully",
         color: "green",
       });
       setModalOpen(false);
@@ -72,22 +81,28 @@ export default function GuestRoomBookings() {
       setSubmitting(false);
     }
   };
+  const handleApproveBooking = (booking) => {
+    // Open approval modal with selected booking
+    setSelectedBooking(booking);
+    setApprovalModalOpen(true);
+  };
 
-  const handleApproveBooking = async (data) => {
+  const handleSubmitApproval = async (approvalData) => {
     try {
       setSubmitting(true);
-      await approveBooking(data);
+      await approveBooking(approvalData);
       notifications.show({
         title: "Success",
-        message: "Booking approved",
+        message: "Booking approved and room assigned successfully",
         color: "green",
       });
-      setApproveModalOpen(false);
+      setApprovalModalOpen(false);
+      setSelectedBooking(null);
       loadData();
     } catch (err) {
       notifications.show({
         title: "Error",
-        message: err.response?.data?.error || "Failed",
+        message: err.response?.data?.error || "Failed to approve booking",
         color: "red",
       });
     } finally {
@@ -96,7 +111,6 @@ export default function GuestRoomBookings() {
   };
 
   const handleRejectBooking = async (booking) => {
-    if (!window.confirm("RejectBooking?")) return;
     try {
       await rejectBooking(booking.id);
       notifications.show({
@@ -108,42 +122,52 @@ export default function GuestRoomBookings() {
     } catch (err) {
       notifications.show({
         title: "Error",
-        message: err.response?.data?.error || "Failed",
+        message: err.response?.data?.error || "Failed to reject booking",
         color: "red",
       });
     }
   };
 
   return (
-    <Card shadow="sm" padding="lg" radius="md" withBorder>
-      <Group justify="space-between" mb="md">
-        <Title order={3}>Guest Room Bookings</Title>
-        <Button leftSection={<IconPlus size={16} />} onClick={() => setModalOpen(true)}>
+    <Flex direction="column" gap="md">
+      <Flex justify="space-between" align="center">
+        <Title order={2}>Guest Room Bookings</Title>
+        <Button
+          leftSection={<IconPlus size={16} />}
+          onClick={() => setModalOpen(true)}
+        >
           New Booking
         </Button>
-      </Group>
+      </Flex>
+
+      {error && (
+        <Alert icon={<IconAlertCircle size={16} />} color="red">
+          {error}
+        </Alert>
+      )}
 
       <Tabs value={activeTab} onChange={setActiveTab}>
-        <Tabs.List mb="md">
-          <Tabs.Tab value="my">My Bookings</Tabs.Tab>
-          <Tabs.Tab value="all">All Bookings</Tabs.Tab>
+        <Tabs.List>
+          <Tabs.Tab value="all" leftSection={<IconList size={14} />}>
+            All Bookings
+          </Tabs.Tab>
+          <Tabs.Tab value="my" leftSection={<IconUser size={14} />}>
+            My Bookings
+          </Tabs.Tab>
         </Tabs.List>
-
-        <Tabs.Panel value="my">
-          <BookingsTable bookings={myBookings} loading={loading} />
-        </Tabs.Panel>
 
         <Tabs.Panel value="all">
           <BookingsTable
             bookings={bookings}
             loading={loading}
             showActions
-            onApprove={(booking) => {
-              setSelectedBooking(booking);
-              setApproveModalOpen(true);
-            }}
+            onApprove={handleApproveBooking}
             onReject={handleRejectBooking}
           />
+        </Tabs.Panel>
+
+        <Tabs.Panel value="my">
+          <BookingsTable bookings={myBookings} loading={loading} />
         </Tabs.Panel>
       </Tabs>
 
@@ -154,16 +178,16 @@ export default function GuestRoomBookings() {
         loading={submitting}
         halls={halls}
       />
-
-      {selectedBooking && (
-        <ApproveBookingModal
-          opened={approveModalOpen}
-          onClose={() => setApproveModalOpen(false)}
-          onSubmit={handleApproveBooking}
-          loading={submitting}
-          booking={selectedBooking}
-        />
-      )}
-    </Card>
+      <ApproveBookingModal
+        opened={approvalModalOpen}
+        onClose={() => {
+          setApprovalModalOpen(false);
+          setSelectedBooking(null);
+        }}
+        onSubmit={handleSubmitApproval}
+        loading={submitting}
+        booking={selectedBooking}
+      />
+    </Flex>
   );
 }

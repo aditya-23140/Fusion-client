@@ -1,6 +1,11 @@
+/**
+ * HallManagement Feature
+ * Manages halls, caretakers, and wardens
+ */
+
 import React, { useState, useEffect, useCallback } from "react";
-import { Title, Button, Card, Group } from "@mantine/core";
-import { IconPlus } from "@tabler/icons-react";
+import { Flex, Title, Button, Alert } from "@mantine/core";
+import { IconPlus, IconAlertCircle } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import HallsTable from "./components/HallsTable";
 import CreateHallModal from "./components/CreateHallModal";
@@ -11,18 +16,17 @@ export default function HallManagement() {
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
 
   const loadHalls = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       const data = await fetchHalls();
       setHalls(data);
     } catch (err) {
-      notifications.show({
-        title: "Error",
-        message: "Failed to load halls",
-        color: "red",
-      });
+      setError("Failed to load halls. Please try again.");
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -55,39 +59,57 @@ export default function HallManagement() {
   };
 
   const handleDeleteHall = async (hall) => {
-    if (!window.confirm("Are you sure?")) return;
+    if (!window.confirm(`Are you sure you want to delete ${hall.hall_name}?`)) {
+      return;
+    }
     try {
       await deleteHall(hall.id);
       notifications.show({
         title: "Success",
-        message: "Hall deleted",
+        message: "Hall deleted successfully",
         color: "green",
       });
       loadHalls();
     } catch (err) {
       notifications.show({
         title: "Error",
-        message: err.response?.data?.error || "Failed to delete",
+        message: err.response?.data?.error || "Failed to delete hall",
         color: "red",
       });
     }
   };
 
   return (
-    <Card shadow="sm" padding="lg" radius="md" withBorder>
-      <Group justify="space-between" mb="md">
-        <Title order={3}>Hall Management</Title>
-        <Button leftSection={<IconPlus size={16} />} onClick={() => setModalOpen(true)}>
+    <Flex direction="column" gap="md">
+      <Flex justify="space-between" align="center">
+        <Title order={2}>Hall Management</Title>
+        <Button
+          leftSection={<IconPlus size={16} />}
+          onClick={() => setModalOpen(true)}
+        >
           Add Hall
         </Button>
-      </Group>
-      <HallsTable halls={halls} loading={loading} onDelete={handleDeleteHall} />
+      </Flex>
+
+      {error && (
+        <Alert icon={<IconAlertCircle size={16} />} color="red">
+          {error}
+        </Alert>
+      )}
+
+      <HallsTable
+        halls={halls}
+        loading={loading}
+        onDelete={handleDeleteHall}
+        onView={(hall) => console.log("View hall:", hall)}
+      />
+
       <CreateHallModal
         opened={modalOpen}
         onClose={() => setModalOpen(false)}
         onSubmit={handleCreateHall}
         loading={submitting}
       />
-    </Card>
+    </Flex>
   );
 }

@@ -4,7 +4,6 @@
  */
 
 import React from "react";
-import PropTypes from "prop-types";
 import { Badge, ActionIcon, Group, Tooltip } from "@mantine/core";
 import { IconTrash, IconEye } from "@tabler/icons-react";
 import DataTable from "./DataTable";
@@ -70,16 +69,3 @@ export default function HallsTable({ halls, loading, onDelete, onView }) {
     />
   );
 }
-
-HallsTable.propTypes = {
-  halls: PropTypes.array.isRequired,
-  loading: PropTypes.bool,
-  onDelete: PropTypes.func,
-  onView: PropTypes.func,
-};
-
-HallsTable.defaultProps = {
-  loading: false,
-  onDelete: null,
-  onView: null,
-};

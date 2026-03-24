@@ -4,7 +4,6 @@
  */
 
 import React from "react";
-import PropTypes from "prop-types";
 import { Badge, ActionIcon, Group, Tooltip } from "@mantine/core";
 import { IconCheck, IconX } from "@tabler/icons-react";
 import DataTable from "./DataTable";
@@ -82,18 +81,3 @@ export default function LeavesTable({
     />
   );
 }
-
-LeavesTable.propTypes = {
-  leaves: PropTypes.array.isRequired,
-  loading: PropTypes.bool,
-  onApprove: PropTypes.func,
-  onReject: PropTypes.func,
-  showActions: PropTypes.bool,
-};
-
-LeavesTable.defaultProps = {
-  loading: false,
-  onApprove: null,
-  onReject: null,
-  showActions: false,
-};

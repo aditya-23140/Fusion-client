@@ -4,12 +4,12 @@
  */
 
 import React, { useState } from "react";
-import PropTypes from "prop-types";
 import {
   Modal,
   TextInput,
   NumberInput,
   Textarea,
+  Select,
   Button,
   Stack,
   Group,
@@ -23,9 +23,9 @@ export default function ImposeFineModal({
 }) {
   const [formData, setFormData] = useState({
     student_id: "",
-    student_name: "",
-    reason: "",
+    fine_type: "",
     amount: 0,
+    reason: "",
   });
 
   const handleSubmit = (e) => {
@@ -48,20 +48,19 @@ export default function ImposeFineModal({
             value={formData.student_id}
             onChange={(e) => handleChange("student_id", e.target.value)}
           />
-          <TextInput
-            label="Student Name"
-            placeholder="Enter student name"
+          <Select
+            label="Fine Type"
+            placeholder="Select fine type"
             required
-            value={formData.student_name}
-            onChange={(e) => handleChange("student_name", e.target.value)}
-          />
-          <Textarea
-            label="Reason"
-            placeholder="Enter reason for fine (e.g., Late Entry, Property Damage, Mess Dues)"
-            required
-            minRows={3}
-            value={formData.reason}
-            onChange={(e) => handleChange("reason", e.target.value)}
+            data={[
+              { value: "Late Entry", label: "Late Entry" },
+              { value: "Property Damage", label: "Property Damage" },
+              { value: "Mess Dues", label: "Mess Dues" },
+              { value: "Discipline", label: "Discipline" },
+              { value: "Other", label: "Other" },
+            ]}
+            value={formData.fine_type}
+            onChange={(value) => handleChange("fine_type", value)}
           />
           <NumberInput
             label="Amount (₹)"
@@ -70,6 +69,14 @@ export default function ImposeFineModal({
             min={0}
             value={formData.amount}
             onChange={(value) => handleChange("amount", value)}
+          />
+          <Textarea
+            label="Reason"
+            placeholder="Enter reason for fine"
+            required
+            minRows={3}
+            value={formData.reason}
+            onChange={(e) => handleChange("reason", e.target.value)}
           />
           <Group justify="flex-end" mt="md">
             <Button variant="light" onClick={onClose}>
@@ -84,14 +91,3 @@ export default function ImposeFineModal({
     </Modal>
   );
 }
-
-ImposeFineModal.propTypes = {
-  opened: PropTypes.bool.isRequired,
-  onClose: PropTypes.func.isRequired,
-  onSubmit: PropTypes.func.isRequired,
-  loading: PropTypes.bool,
-};
-
-ImposeFineModal.defaultProps = {
-  loading: false,
-};

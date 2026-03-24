@@ -4,7 +4,6 @@
  */
 
 import React from "react";
-import PropTypes from "prop-types";
 import { Badge } from "@mantine/core";
 import DataTable from "./DataTable";
 
@@ -43,12 +42,3 @@ export default function AttendanceTable({ attendance, loading }) {
     />
   );
 }
-
-AttendanceTable.propTypes = {
-  attendance: PropTypes.array.isRequired,
-  loading: PropTypes.bool,
-};
-
-AttendanceTable.defaultProps = {
-  loading: false,
-};

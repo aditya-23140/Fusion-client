@@ -4,7 +4,6 @@
  */
 
 import React, { useState } from "react";
-import PropTypes from "prop-types";
 import {
   Modal,
   TextInput,
@@ -204,16 +203,3 @@ export default function CreateBookingModal({
     </Modal>
   );
 }
-
-CreateBookingModal.propTypes = {
-  opened: PropTypes.bool.isRequired,
-  onClose: PropTypes.func.isRequired,
-  onSubmit: PropTypes.func.isRequired,
-  loading: PropTypes.bool,
-  halls: PropTypes.array,
-};
-
-CreateBookingModal.defaultProps = {
-  loading: false,
-  halls: [],
-};

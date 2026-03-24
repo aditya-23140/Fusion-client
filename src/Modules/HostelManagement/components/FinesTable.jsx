@@ -4,7 +4,6 @@
  */
 
 import React from "react";
-import PropTypes from "prop-types";
 import { Badge, ActionIcon, Group, Tooltip } from "@mantine/core";
 import { IconEdit, IconTrash } from "@tabler/icons-react";
 import DataTable from "./DataTable";
@@ -22,32 +21,25 @@ export default function FinesTable({
   showActions = false,
 }) {
   const columns = [
-    { key: "fine_id", label: "Fine ID" },
-    {
-      key: "student_id_display",
-      label: "Student ID",
-      render: (_, row) => row.student_id_display || row.student_roll_no || "-",
-    },
+    { key: "id", label: "ID" },
     {
       key: "student_name",
-      label: "Student Name",
-      render: (_, row) => row.student_name || "-",
+      label: "Student",
+      render: (_, row) => row.student?.id?.user?.username || "-",
     },
     {
       key: "hall_name",
       label: "Hall",
-      render: (_, row) => row.hall_name || "-",
+      render: (_, row) => row.hall?.hall_name || "-",
     },
-    {
-      key: "reason",
-      label: "Reason",
-      render: (value) => value || "-",
-    },
+    { key: "fine_type", label: "Fine Type" },
     {
       key: "amount",
       label: "Amount",
       render: (value) => `₹${value}`,
     },
+    { key: "reason", label: "Reason" },
+    { key: "date_issued", label: "Date Issued" },
     {
       key: "status",
       label: "Status",
@@ -95,18 +87,3 @@ export default function FinesTable({
     />
   );
 }
-
-FinesTable.propTypes = {
-  fines: PropTypes.array.isRequired,
-  loading: PropTypes.bool,
-  onEdit: PropTypes.func,
-  onDelete: PropTypes.func,
-  showActions: PropTypes.bool,
-};
-
-FinesTable.defaultProps = {
-  loading: false,
-  onEdit: null,
-  onDelete: null,
-  showActions: false,
-};

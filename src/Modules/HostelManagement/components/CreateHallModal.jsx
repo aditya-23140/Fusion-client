@@ -4,7 +4,6 @@
  */
 
 import React, { useState } from "react";
-import PropTypes from "prop-types";
 import {
   Modal,
   TextInput,
@@ -86,14 +85,3 @@ export default function CreateHallModal({
     </Modal>
   );
 }
-
-CreateHallModal.propTypes = {
-  opened: PropTypes.bool.isRequired,
-  onClose: PropTypes.func.isRequired,
-  onSubmit: PropTypes.func.isRequired,
-  loading: PropTypes.bool,
-};
-
-CreateHallModal.defaultProps = {
-  loading: false,
-};

@@ -4,8 +4,7 @@
  */
 
 import React, { useState } from "react";
-import PropTypes from "prop-types";
-import { Modal, TextInput, Textarea, Button, Stack, Group } from "@mantine/core";
+import { Modal, Select, Textarea, Button, Stack, Group } from "@mantine/core";
 
 export default function CreateComplaintModal({
   opened,
@@ -14,8 +13,8 @@ export default function CreateComplaintModal({
   loading,
 }) {
   const [formData, setFormData] = useState({
+    complaint_type: "",
     description: "",
-    contact_number: "",
   });
 
   const handleSubmit = (e) => {
@@ -31,12 +30,18 @@ export default function CreateComplaintModal({
     <Modal opened={opened} onClose={onClose} title="File a Complaint" size="md">
       <form onSubmit={handleSubmit}>
         <Stack gap="md">
-          <TextInput
-            label="Contact Number"
-            placeholder="Enter your contact number"
+          <Select
+            label="Complaint Type"
+            placeholder="Select type"
             required
-            value={formData.contact_number}
-            onChange={(e) => handleChange("contact_number", e.target.value)}
+            data={[
+              { value: "Ragging", label: "Ragging" },
+              { value: "Maintenance", label: "Maintenance" },
+              { value: "Mess", label: "Mess" },
+              { value: "Other", label: "Other" },
+            ]}
+            value={formData.complaint_type}
+            onChange={(value) => handleChange("complaint_type", value)}
           />
           <Textarea
             label="Description"
@@ -59,14 +64,3 @@ export default function CreateComplaintModal({
     </Modal>
   );
 }
-
-CreateComplaintModal.propTypes = {
-  opened: PropTypes.bool.isRequired,
-  onClose: PropTypes.func.isRequired,
-  onSubmit: PropTypes.func.isRequired,
-  loading: PropTypes.bool,
-};
-
-CreateComplaintModal.defaultProps = {
-  loading: false,
-};

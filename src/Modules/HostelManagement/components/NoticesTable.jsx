@@ -4,7 +4,6 @@
  */
 
 import React from "react";
-import PropTypes from "prop-types";
 import { ActionIcon, Tooltip, Anchor } from "@mantine/core";
 import { IconTrash, IconDownload } from "@tabler/icons-react";
 import DataTable from "./DataTable";
@@ -71,16 +70,3 @@ export default function NoticesTable({
     />
   );
 }
-
-NoticesTable.propTypes = {
-  notices: PropTypes.array.isRequired,
-  loading: PropTypes.bool,
-  onDelete: PropTypes.func,
-  canDelete: PropTypes.bool,
-};
-
-NoticesTable.defaultProps = {
-  loading: false,
-  onDelete: null,
-  canDelete: false,
-};

@@ -162,7 +162,7 @@ function SidebarContent({ isCollapsed, toggleSidebar }) {
       label: "Hostel Management",
       id: "hostel_management",
       icon: <HostelIcon size={18} />,
-      url: "/",
+      url: "/hostel-management",
     },
     {
       label: "Other Academic Procedure",

@@ -1,6 +1,11 @@
+/**
+ * NoticeBoard Feature
+ * Manages hostel notices
+ */
+
 import React, { useState, useEffect, useCallback } from "react";
-import { Title, Button, Card, Group } from "@mantine/core";
-import { IconPlus } from "@tabler/icons-react";
+import { Flex, Title, Button, Alert } from "@mantine/core";
+import { IconPlus, IconAlertCircle } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import NoticesTable from "./components/NoticesTable";
 import CreateNoticeModal from "./components/CreateNoticeModal";
@@ -12,10 +17,12 @@ export default function NoticeBoard() {
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
 
-  const loadNotices = useCallback(async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       const [noticesData, hallsData] = await Promise.all([
         fetchNotices(),
         fetchHalls(),
@@ -23,19 +30,16 @@ export default function NoticeBoard() {
       setNotices(noticesData);
       setHalls(hallsData);
     } catch (err) {
-      notifications.show({
-        title: "Error",
-        message: "Failed to load notices",
-        color: "red",
-      });
+      setError("Failed to load notices. Please try again.");
+      console.error(err);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadNotices();
-  }, [loadNotices]);
+    loadData();
+  }, [loadData]);
 
   const handleCreateNotice = async (formData) => {
     try {
@@ -43,15 +47,15 @@ export default function NoticeBoard() {
       await createNotice(formData);
       notifications.show({
         title: "Success",
-        message: "Notice posted",
+        message: "Notice created successfully",
         color: "green",
       });
       setModalOpen(false);
-      loadNotices();
+      loadData();
     } catch (err) {
       notifications.show({
         title: "Error",
-        message: err.response?.data?.error || "Failed to post",
+        message: err.response?.data?.error || "Failed to create notice",
         color: "red",
       });
     } finally {
@@ -60,33 +64,51 @@ export default function NoticeBoard() {
   };
 
   const handleDeleteNotice = async (notice) => {
-    if (!window.confirm("Delete?")) return;
+    if (!window.confirm("Are you sure you want to delete this notice?")) {
+      return;
+    }
     try {
       await deleteNotice(notice.id);
       notifications.show({
         title: "Success",
-        message: "Notice deleted",
+        message: "Notice deleted successfully",
         color: "green",
       });
-      loadNotices();
+      loadData();
     } catch (err) {
       notifications.show({
         title: "Error",
-        message: err.response?.data?.error || "Failed",
+        message: err.response?.data?.error || "Failed to delete notice",
         color: "red",
       });
     }
   };
 
   return (
-    <Card shadow="sm" padding="lg" radius="md" withBorder>
-      <Group justify="space-between" mb="md">
-        <Title order={3}>Notice Board</Title>
-        <Button leftSection={<IconPlus size={16} />} onClick={() => setModalOpen(true)}>
-          Post Notice
+    <Flex direction="column" gap="md">
+      <Flex justify="space-between" align="center">
+        <Title order={2}>Notice Board</Title>
+        <Button
+          leftSection={<IconPlus size={16} />}
+          onClick={() => setModalOpen(true)}
+        >
+          Create Notice
         </Button>
-      </Group>
-      <NoticesTable notices={notices} loading={loading} onDelete={handleDeleteNotice} canDelete />
+      </Flex>
+
+      {error && (
+        <Alert icon={<IconAlertCircle size={16} />} color="red">
+          {error}
+        </Alert>
+      )}
+
+      <NoticesTable
+        notices={notices}
+        loading={loading}
+        canDelete
+        onDelete={handleDeleteNotice}
+      />
+
       <CreateNoticeModal
         opened={modalOpen}
         onClose={() => setModalOpen(false)}
@@ -94,6 +116,6 @@ export default function NoticeBoard() {
         loading={submitting}
         halls={halls}
       />
-    </Card>
+    </Flex>
   );
 }

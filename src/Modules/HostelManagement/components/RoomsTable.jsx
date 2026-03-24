@@ -4,7 +4,6 @@
  */
 
 import React from "react";
-import PropTypes from "prop-types";
 import { Badge } from "@mantine/core";
 import DataTable from "./DataTable";
 
@@ -44,12 +43,3 @@ export default function RoomsTable({ rooms, loading }) {
     />
   );
 }
-
-RoomsTable.propTypes = {
-  rooms: PropTypes.array.isRequired,
-  loading: PropTypes.bool,
-};
-
-RoomsTable.defaultProps = {
-  loading: false,
-};

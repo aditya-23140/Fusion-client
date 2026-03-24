@@ -15,6 +15,7 @@ import InactivityHandler from "./helper/inactivityhandler";
 import Examination from "./Modules/Examination/examination";
 import Database from "./Modules/Database/database";
 import ProgrammeCurriculumRoutes from "./Modules/Program_curriculum/programmCurriculum";
+import HostelManagement from "./Modules/HostelManagement";
 import NotFoundPage from "./components/NotFoundPage";
 
 const theme = createTheme({
@@ -59,6 +60,14 @@ export default function App() {
           element={
             <Layout>
               <Profile />
+            </Layout>
+          }
+        />
+        <Route
+          path="/hostel-management/*"
+          element={
+            <Layout>
+              <HostelManagement />
             </Layout>
           }
         />

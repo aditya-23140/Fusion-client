@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Title, Button, Alert, Tabs, Card, Group } from "@mantine/core";
+import { Flex, Title, Button, Alert, Tabs } from "@mantine/core";
 import {
   IconPlus,
   IconAlertCircle,
@@ -75,6 +75,24 @@ export default function FineManagement() {
     }
   };
 
+  const handleUpdateFine = async (fine) => {
+    try {
+      await updateFine(fine.id, { status: "Paid" });
+      notifications.show({
+        title: "Success",
+        message: "Fine marked as paid",
+        color: "green",
+      });
+      loadData();
+    } catch (err) {
+      notifications.show({
+        title: "Error",
+        message: err.response?.data?.error || "Failed to update fine",
+        color: "red",
+      });
+    }
+  };
+
   const handleDeleteFine = async (fine) => {
     if (!window.confirm("Are you sure you want to delete this fine?")) {
       return;
@@ -97,44 +115,45 @@ export default function FineManagement() {
   };
 
   return (
-    <Card shadow="sm" padding="lg" radius="md" withBorder>
-      <Group justify="space-between" mb="md">
-        <Title order={3}>Fines Management</Title>
+    <Flex direction="column" gap="md">
+      <Flex justify="space-between" align="center">
+        <Title order={2}>Fine Management</Title>
         <Button
           leftSection={<IconPlus size={16} />}
           onClick={() => setModalOpen(true)}
         >
           Impose Fine
         </Button>
-      </Group>
+      </Flex>
 
       {error && (
-        <Alert icon={<IconAlertCircle size={16} />} color="red" mb="md">
+        <Alert icon={<IconAlertCircle size={16} />} color="red">
           {error}
         </Alert>
       )}
 
       <Tabs value={activeTab} onChange={setActiveTab}>
-        <Tabs.List mb="md">
-          <Tabs.Tab value="my" leftSection={<IconUser size={14} />}>
-            My Fines
-          </Tabs.Tab>
+        <Tabs.List>
           <Tabs.Tab value="all" leftSection={<IconList size={14} />}>
             All Fines
           </Tabs.Tab>
+          <Tabs.Tab value="my" leftSection={<IconUser size={14} />}>
+            My Fines
+          </Tabs.Tab>
         </Tabs.List>
-
-        <Tabs.Panel value="my">
-          <FinesTable fines={myFines} loading={loading} />
-        </Tabs.Panel>
 
         <Tabs.Panel value="all">
           <FinesTable
             fines={fines}
             loading={loading}
             showActions
+            onEdit={handleUpdateFine}
             onDelete={handleDeleteFine}
           />
+        </Tabs.Panel>
+
+        <Tabs.Panel value="my">
+          <FinesTable fines={myFines} loading={loading} />
         </Tabs.Panel>
       </Tabs>
 
@@ -144,6 +163,6 @@ export default function FineManagement() {
         onSubmit={handleImposeFine}
         loading={submitting}
       />
-    </Card>
+    </Flex>
   );
 }

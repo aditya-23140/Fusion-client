@@ -4,7 +4,6 @@
  */
 
 import React from "react";
-import PropTypes from "prop-types";
 import { ActionIcon, Group, Tooltip } from "@mantine/core";
 import { IconEdit, IconTrash } from "@tabler/icons-react";
 import DataTable from "./DataTable";
@@ -67,18 +66,3 @@ export default function InventoryTable({
     />
   );
 }
-
-InventoryTable.propTypes = {
-  inventory: PropTypes.array.isRequired,
-  loading: PropTypes.bool,
-  onEdit: PropTypes.func,
-  onDelete: PropTypes.func,
-  showActions: PropTypes.bool,
-};
-
-InventoryTable.defaultProps = {
-  loading: false,
-  onEdit: null,
-  onDelete: null,
-  showActions: false,
-};

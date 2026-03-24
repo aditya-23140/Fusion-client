@@ -4,7 +4,6 @@
  */
 
 import React from "react";
-import PropTypes from "prop-types";
 import { Table, Text, ScrollArea, Paper, Center, Loader } from "@mantine/core";
 
 export default function DataTable({
@@ -56,15 +55,3 @@ export default function DataTable({
     </Paper>
   );
 }
-
-DataTable.propTypes = {
-  columns: PropTypes.array.isRequired,
-  data: PropTypes.array.isRequired,
-  loading: PropTypes.bool,
-  emptyMessage: PropTypes.string,
-};
-
-DataTable.defaultProps = {
-  loading: false,
-  emptyMessage: "No data available",
-};

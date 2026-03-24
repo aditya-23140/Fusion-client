@@ -1,41 +1,61 @@
+/**
+ * InventoryManagement Feature
+ * Manages hostel inventory
+ */
+
 import React, { useState, useEffect, useCallback } from "react";
-import { Title, Button, Card, Group } from "@mantine/core";
-import { IconPlus } from "@tabler/icons-react";
+import { Flex, Title, Button, Alert, Select } from "@mantine/core";
+import { IconPlus, IconAlertCircle } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import InventoryTable from "./components/InventoryTable";
 import CreateInventoryModal from "./components/CreateInventoryModal";
-import { fetchHalls, fetchInventory, createInventory, deleteInventory } from "./api";
+import {
+  fetchInventory,
+  createInventory,
+  updateInventory,
+  deleteInventory,
+  fetchHalls,
+} from "./api";
 
 export default function InventoryManagement() {
   const [inventory, setInventory] = useState([]);
   const [halls, setHalls] = useState([]);
+  const [selectedHall, setSelectedHall] = useState(null);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [selectedHall, setSelectedHall] = useState(null);
+  const [error, setError] = useState(null);
 
-  const loadInventory = useCallback(async () => {
+  const loadHalls = useCallback(async () => {
     try {
-      setLoading(true);
       const hallsData = await fetchHalls();
       setHalls(hallsData);
-
       if (hallsData.length > 0) {
-        const hallId = selectedHall || hallsData[0].id;
-        setSelectedHall(hallId);
-        const inventoryData = await fetchInventory(hallId);
-        setInventory(inventoryData);
+        setSelectedHall(String(hallsData[0].id));
       }
     } catch (err) {
-      notifications.show({
-        title: "Error",
-        message: "Failed to load inventory",
-        color: "red",
-      });
+      console.error(err);
+    }
+  }, []);
+
+  const loadInventory = useCallback(async () => {
+    if (!selectedHall) return;
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await fetchInventory(selectedHall);
+      setInventory(data);
+    } catch (err) {
+      setError("Failed to load inventory. Please try again.");
+      console.error(err);
     } finally {
       setLoading(false);
     }
   }, [selectedHall]);
+
+  useEffect(() => {
+    loadHalls();
+  }, [loadHalls]);
 
   useEffect(() => {
     loadInventory();
@@ -47,7 +67,7 @@ export default function InventoryManagement() {
       await createInventory(formData);
       notifications.show({
         title: "Success",
-        message: "Item added",
+        message: "Inventory item added successfully",
         color: "green",
       });
       setModalOpen(false);
@@ -55,7 +75,7 @@ export default function InventoryManagement() {
     } catch (err) {
       notifications.show({
         title: "Error",
-        message: err.response?.data?.error || "Failed",
+        message: err.response?.data?.error || "Failed to add inventory item",
         color: "red",
       });
     } finally {
@@ -64,33 +84,64 @@ export default function InventoryManagement() {
   };
 
   const handleDeleteInventory = async (item) => {
-    if (!window.confirm("Delete?")) return;
+    if (!window.confirm("Are you sure you want to delete this item?")) {
+      return;
+    }
     try {
       await deleteInventory(item.id);
       notifications.show({
         title: "Success",
-        message: "Item deleted",
+        message: "Inventory item deleted successfully",
         color: "green",
       });
       loadInventory();
     } catch (err) {
       notifications.show({
         title: "Error",
-        message: err.response?.data?.error || "Failed",
+        message: err.response?.data?.error || "Failed to delete inventory item",
         color: "red",
       });
     }
   };
 
   return (
-    <Card shadow="sm" padding="lg" radius="md" withBorder>
+    <Flex direction="column" gap="md">
       <Group justify="space-between" mb="md">
-        <Title order={3}>Inventory Management</Title>
-        <Button leftSection={<IconPlus size={16} />} onClick={() => setModalOpen(true)}>
-          Add Item
-        </Button>
+        <Title order={2}>Inventory Management</Title>
+        <Group>
+          <Select
+            placeholder="Select Hall"
+            data={halls.map((h) => ({
+              value: String(h.id),
+              label: h.hall_name,
+            }))}
+            value={selectedHall}
+            onChange={setSelectedHall}
+            style={{ width: 200 }}
+          />
+          <Button
+            leftSection={<IconPlus size={16} />}
+            onClick={() => setModalOpen(true)}
+          >
+            Add Item
+          </Button>
+        </Group>
       </Group>
-      <InventoryTable inventory={inventory} loading={loading} onDelete={handleDeleteInventory} showActions />
+
+      {error && (
+        <Alert icon={<IconAlertCircle size={16} />} color="red" mb="md">
+          {error}
+        </Alert>
+      )}
+
+      <InventoryTable
+        inventory={inventory}
+        loading={loading}
+        showActions
+        onEdit={(item) => console.log("Edit item:", item)}
+        onDelete={handleDeleteInventory}
+      />
+
       <CreateInventoryModal
         opened={modalOpen}
         onClose={() => setModalOpen(false)}
@@ -98,6 +149,6 @@ export default function InventoryManagement() {
         loading={submitting}
         halls={halls}
       />
-    </Card>
+    </Flex>
   );
 }
