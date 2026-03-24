@@ -62,7 +62,7 @@ export default function RoomManagement() {
           onChange={setSelectedHall}
           style={{ width: 200 }}
         />
-      </Group>
+      </Flex>
 
       {error && (
         <Alert icon={<IconAlertCircle size={16} />} color="red" mb="md">

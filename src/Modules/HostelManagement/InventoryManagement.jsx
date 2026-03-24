@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Flex, Title, Button, Alert, Select } from "@mantine/core";
+import { Flex, Title, Button, Alert, Select, Group } from "@mantine/core";
 import { IconPlus, IconAlertCircle } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import InventoryTable from "./components/InventoryTable";
