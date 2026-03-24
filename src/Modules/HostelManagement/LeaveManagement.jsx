@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Flex, Title, Button, Alert, Tabs, Group } from "@mantine/core";
+import { Flex, Title, Button, Alert, Tabs, Group, Card } from "@mantine/core";
 import {
   IconPlus,
   IconAlertCircle,

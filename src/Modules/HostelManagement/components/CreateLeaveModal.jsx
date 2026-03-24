@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from "react";
+import PropTypes from "prop-types";
 import {
   Modal,
   TextInput,
@@ -25,8 +26,7 @@ export default function CreateLeaveModal({
     start_date: null,
     end_date: null,
     reason: "",
-    address_during_leave: "",
-    phone: "",
+    phone_number: "",
   });
 
   const handleSubmit = (e) => {
@@ -75,21 +75,12 @@ export default function CreateLeaveModal({
             value={formData.reason}
             onChange={(e) => handleChange("reason", e.target.value)}
           />
-          <Textarea
-            label="Address During Leave"
-            placeholder="Enter address where you'll be staying"
-            required
-            value={formData.address_during_leave}
-            onChange={(e) =>
-              handleChange("address_during_leave", e.target.value)
-            }
-          />
           <TextInput
             label="Contact Phone"
             placeholder="Enter contact number"
             required
-            value={formData.phone}
-            onChange={(e) => handleChange("phone", e.target.value)}
+            value={formData.phone_number}
+            onChange={(e) => handleChange("phone_number", e.target.value)}
           />
           <Group justify="flex-end" mt="md">
             <Button variant="light" onClick={onClose}>
@@ -104,3 +95,10 @@ export default function CreateLeaveModal({
     </Modal>
   );
 }
+
+CreateLeaveModal.propTypes = {
+  opened: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  onSubmit: PropTypes.func.isRequired,
+  loading: PropTypes.bool,
+};
