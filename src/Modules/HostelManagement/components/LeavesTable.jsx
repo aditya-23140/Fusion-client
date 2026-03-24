@@ -4,6 +4,7 @@
  */
 
 import React from "react";
+import PropTypes from "prop-types";
 import { Badge, ActionIcon, Group, Tooltip } from "@mantine/core";
 import { IconCheck, IconX } from "@tabler/icons-react";
 import DataTable from "./DataTable";
@@ -13,6 +14,16 @@ const statusColors = {
   Approved: "green",
   Rejected: "red",
 };
+
+const leaveShape = PropTypes.shape({
+  id: PropTypes.number,
+  student_name: PropTypes.string,
+  start_date: PropTypes.string,
+  end_date: PropTypes.string,
+  reason: PropTypes.string,
+  phone_number: PropTypes.string,
+  status: PropTypes.string,
+});
 
 export default function LeavesTable({
   leaves,
@@ -26,18 +37,31 @@ export default function LeavesTable({
     {
       key: "student_name",
       label: "Student",
-      render: (_, row) => row.student?.id?.user?.username || "-",
+      render: (_, row) => row.student_name || "-",
     },
-    { key: "start_date", label: "Start Date" },
-    { key: "end_date", label: "End Date" },
-    { key: "reason", label: "Reason" },
-    { key: "address_during_leave", label: "Address" },
-    { key: "phone", label: "Phone" },
+    {
+      key: "start_date",
+      label: "Start Date",
+      render: (_, row) => row.start_date || "-",
+    },
+    {
+      key: "end_date",
+      label: "End Date",
+      render: (_, row) => row.end_date || "-",
+    },
+    { key: "reason", label: "Reason", render: (_, row) => row.reason || "-" },
+    {
+      key: "phone_number",
+      label: "Phone",
+      render: (_, row) => row.phone_number || "-",
+    },
     {
       key: "status",
       label: "Status",
-      render: (value) => (
-        <Badge color={statusColors[value] || "gray"}>{value}</Badge>
+      render: (_, row) => (
+        <Badge color={statusColors[row.status] || "gray"}>
+          {row.status || "-"}
+        </Badge>
       ),
     },
   ];
@@ -81,3 +105,11 @@ export default function LeavesTable({
     />
   );
 }
+
+LeavesTable.propTypes = {
+  leaves: PropTypes.arrayOf(leaveShape).isRequired,
+  loading: PropTypes.bool.isRequired,
+  onApprove: PropTypes.func,
+  onReject: PropTypes.func,
+  showActions: PropTypes.bool,
+};
