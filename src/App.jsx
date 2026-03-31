@@ -15,8 +15,8 @@ import InactivityHandler from "./helper/inactivityhandler";
 import Examination from "./Modules/Examination/examination";
 import Database from "./Modules/Database/database";
 import ProgrammeCurriculumRoutes from "./Modules/Program_curriculum/programmCurriculum";
+import HostelManagement from "./Modules/HostelManagement";
 import NotFoundPage from "./components/NotFoundPage";
-import HostelManagementPage from "./Modules/HostelManagement/index";
 
 const theme = createTheme({
   breakpoints: {
@@ -64,6 +64,14 @@ export default function App() {
           }
         />
         <Route
+          path="/hostel-management/*"
+          element={
+            <Layout>
+              <HostelManagement />
+            </Layout>
+          }
+        />
+        <Route
           path="/facultyprofessionalprofile/*"
           element={
             <Layout>
@@ -83,14 +91,14 @@ export default function App() {
         <Route path="/reset-password" element={<ForgotPassword />} />
         <Route path="/examination/*" element={<Examination />} />
         <Route path="/database/*" element={<Database />} />
-        <Route
+        {/* <Route
           path="/hostel-management"
           element={
             <Layout>
               <HostelManagementPage />
             </Layout>
           }
-        />
+        /> */}
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </MantineProvider>

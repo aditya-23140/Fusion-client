@@ -1,31 +1,28 @@
 /**
- * Hostel Management API Routes
- * All API endpoints for the hostel management module
+ * Hostel Management Routes
+ * All API endpoint routes for the hostel management module
  */
 
-import { host } from "../globalRoutes";
+const host = "http://127.0.0.1:8000";
+const BASE_URL = `${host}/api/hostel`;
 
-const BASE_URL = `${host}/hostelmanagement/api`;
-
-// ══════════════════════════════════════════════════════════════
-// HALL ENDPOINTS
-// ══════════════════════════════════════════════════════════════
+// Hall Routes
 export const hallsRoute = `${BASE_URL}/halls/`;
 export const getHallRoute = (hallId) => `${BASE_URL}/halls/${hallId}/`;
 export const createHallRoute = `${BASE_URL}/halls/create/`;
 export const deleteHallRoute = (hallId) =>
   `${BASE_URL}/halls/${hallId}/delete/`;
 
-// ══════════════════════════════════════════════════════════════
-// CARETAKER & WARDEN ENDPOINTS
-// ══════════════════════════════════════════════════════════════
+// Caretaker Routes
 export const assignCaretakerRoute = `${BASE_URL}/caretakers/assign/`;
-export const assignWardenRoute = `${BASE_URL}/wardens/assign/`;
-export const assignBatchRoute = `${BASE_URL}/batches/assign/`;
 
-// ══════════════════════════════════════════════════════════════
-// GUEST ROOM BOOKING ENDPOINTS
-// ══════════════════════════════════════════════════════════════
+// Warden Routes
+export const assignWardenRoute = `${BASE_URL}/wardens/assign/`;
+
+// Batch Routes
+export const assignBatchRoute = `${BASE_URL}/batch/assign/`;
+
+// Booking Routes
 export const createBookingRoute = `${BASE_URL}/bookings/create/`;
 export const listBookingsRoute = `${BASE_URL}/bookings/`;
 export const myBookingsRoute = `${BASE_URL}/bookings/my/`;
@@ -33,38 +30,28 @@ export const approveBookingRoute = `${BASE_URL}/bookings/approve/`;
 export const rejectBookingRoute = (bookingId) =>
   `${BASE_URL}/bookings/${bookingId}/reject/`;
 
-// ══════════════════════════════════════════════════════════════
-// GUEST ROOM ENDPOINTS
-// ══════════════════════════════════════════════════════════════
+// Guest Room Routes
 export const listGuestRoomsRoute = (hallId) =>
   `${BASE_URL}/guest-rooms/hall/${hallId}/`;
 
-// ══════════════════════════════════════════════════════════════
-// NOTICE ENDPOINTS
-// ══════════════════════════════════════════════════════════════
+// Notice Routes
 export const listNoticesRoute = `${BASE_URL}/notices/`;
 export const createNoticeRoute = `${BASE_URL}/notices/create/`;
 export const deleteNoticeRoute = (noticeId) =>
   `${BASE_URL}/notices/${noticeId}/delete/`;
 
-// ══════════════════════════════════════════════════════════════
-// LEAVE ENDPOINTS
-// ══════════════════════════════════════════════════════════════
+// Leave Routes
 export const createLeaveRoute = `${BASE_URL}/leaves/create/`;
 export const listLeavesRoute = `${BASE_URL}/leaves/`;
 export const myLeavesRoute = `${BASE_URL}/leaves/my/`;
 export const updateLeaveStatusRoute = `${BASE_URL}/leaves/update-status/`;
 
-// ══════════════════════════════════════════════════════════════
-// COMPLAINT ENDPOINTS
-// ══════════════════════════════════════════════════════════════
+// Complaint Routes
 export const fileComplaintRoute = `${BASE_URL}/complaints/file/`;
 export const listComplaintsRoute = `${BASE_URL}/complaints/`;
 export const myComplaintsRoute = `${BASE_URL}/complaints/my/`;
 
-// ══════════════════════════════════════════════════════════════
-// FINE ENDPOINTS
-// ══════════════════════════════════════════════════════════════
+// Fine Routes
 export const imposeFineRoute = `${BASE_URL}/fines/impose/`;
 export const listFinesRoute = `${BASE_URL}/fines/`;
 export const myFinesRoute = `${BASE_URL}/fines/my/`;
@@ -73,9 +60,7 @@ export const updateFineRoute = (fineId) =>
 export const deleteFineRoute = (fineId) =>
   `${BASE_URL}/fines/${fineId}/delete/`;
 
-// ══════════════════════════════════════════════════════════════
-// INVENTORY ENDPOINTS
-// ══════════════════════════════════════════════════════════════
+// Inventory Routes
 export const createInventoryRoute = `${BASE_URL}/inventory/create/`;
 export const listInventoryRoute = (hallId) =>
   `${BASE_URL}/inventory/hall/${hallId}/`;
@@ -84,26 +69,18 @@ export const updateInventoryRoute = (inventoryId) =>
 export const deleteInventoryRoute = (inventoryId) =>
   `${BASE_URL}/inventory/${inventoryId}/delete/`;
 
-// ══════════════════════════════════════════════════════════════
-// ATTENDANCE ENDPOINTS
-// ══════════════════════════════════════════════════════════════
+// Attendance Routes
 export const markAttendanceRoute = `${BASE_URL}/attendance/mark/`;
 export const listAttendanceRoute = (hallId) =>
   `${BASE_URL}/attendance/hall/${hallId}/`;
 
-// ══════════════════════════════════════════════════════════════
-// ROOM MANAGEMENT ENDPOINTS
-// ══════════════════════════════════════════════════════════════
+// Room Routes
 export const listRoomsRoute = (hallId) => `${BASE_URL}/rooms/hall/${hallId}/`;
 export const changeRoomRoute = `${BASE_URL}/rooms/change/`;
 
-// ══════════════════════════════════════════════════════════════
-// HISTORY ENDPOINTS
-// ══════════════════════════════════════════════════════════════
-export const listTransactionHistoryRoute = `${BASE_URL}/history/transactions/`;
-export const listHostelHistoryRoute = `${BASE_URL}/history/hostel/`;
+// History Routes
+export const listTransactionHistoryRoute = `${BASE_URL}/transactions/`;
+export const listHostelHistoryRoute = `${BASE_URL}/history/`;
 
-// ══════════════════════════════════════════════════════════════
-// USER ROLE ENDPOINT
-// ══════════════════════════════════════════════════════════════
+// User Role Route
 export const userRoleRoute = `${BASE_URL}/user/role/`;
