@@ -1,45 +1,46 @@
 /**
- * ComplaintManagement Feature
+ * ComplaintManagement - Thin View
  * Manages hostel complaints
+ * Orchestrates components and handles state, calls api.js
  */
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Card, Title, Button, Group, Alert, Tabs } from "@mantine/core";
 import {
-  IconPlus,
-  IconAlertCircle,
-  IconList,
-  IconUser,
-} from "@tabler/icons-react";
+  Container,
+  Card,
+  Title,
+  Button,
+  Group,
+  Alert,
+  Stack,
+  Modal,
+  Textarea,
+} from "@mantine/core";
+import { IconPlus, IconAlertCircle } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
-import ComplaintsTable from "./components/ComplaintsTable";
+import ComplaintCard from "./components/ComplaintCard";
 import CreateComplaintModal from "./components/CreateComplaintModal";
-import { fetchComplaints, fetchMyComplaints, fileComplaint } from "./api";
+import { fetchComplaints, escalateComplaint, resolveComplaint } from "./api";
 
 export default function ComplaintManagement() {
   const [complaints, setComplaints] = useState([]);
-  const [myComplaints, setMyComplaints] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState("my");
+  const [selectedComplaint, setSelectedComplaint] = useState(null);
+  const [escalateModalOpen, setEscalateModalOpen] = useState(false);
+  const [resolveModalOpen, setResolveModalOpen] = useState(false);
+  const [escalationReason, setEscalationReason] = useState("");
+  const [resolutionRemarks, setResolutionRemarks] = useState("");
 
   const loadData = useCallback(async () => {
     try {
-      setLoading(true);
       setError(null);
-      const [complaintsData, myComplaintsData] = await Promise.all([
-        fetchComplaints(),
-        fetchMyComplaints(),
-      ]);
+      const complaintsData = await fetchComplaints();
       setComplaints(complaintsData);
-      setMyComplaints(myComplaintsData);
     } catch (err) {
       setError("Failed to load complaints. Please try again.");
       console.error(err);
-    } finally {
-      setLoading(false);
     }
   }, []);
 
@@ -47,21 +48,67 @@ export default function ComplaintManagement() {
     loadData();
   }, [loadData]);
 
-  const handleFileComplaint = async (formData) => {
+  const handleEscalate = async () => {
+    if (!selectedComplaint || !escalationReason.trim()) {
+      notifications.show({
+        title: "Error",
+        message: "Please provide a reason for escalation",
+        color: "red",
+      });
+      return;
+    }
+
     try {
       setSubmitting(true);
-      await fileComplaint(formData);
+      await escalateComplaint(selectedComplaint.id, {
+        escalation_reason: escalationReason,
+      });
       notifications.show({
         title: "Success",
-        message: "Complaint filed successfully",
+        message: "Complaint escalated successfully",
         color: "green",
       });
-      setModalOpen(false);
+      setEscalateModalOpen(false);
+      setEscalationReason("");
       loadData();
     } catch (err) {
       notifications.show({
         title: "Error",
-        message: err.response?.data?.error || "Failed to file complaint",
+        message: err.response?.data?.error || "Failed to escalate complaint",
+        color: "red",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleResolve = async () => {
+    if (!selectedComplaint || !resolutionRemarks.trim()) {
+      notifications.show({
+        title: "Error",
+        message: "Please provide resolution remarks",
+        color: "red",
+      });
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      await resolveComplaint(selectedComplaint.id, {
+        resolution_remarks: resolutionRemarks,
+      });
+      notifications.show({
+        title: "Success",
+        message: "Complaint resolved successfully",
+        color: "green",
+      });
+      setResolveModalOpen(false);
+      setResolutionRemarks("");
+      loadData();
+    } catch (err) {
+      notifications.show({
+        title: "Error",
+        message: err.response?.data?.error || "Failed to resolve complaint",
         color: "red",
       });
     } finally {
@@ -70,48 +117,125 @@ export default function ComplaintManagement() {
   };
 
   return (
-    <Card shadow="sm" padding="lg" radius="md" withBorder>
-      <Group justify="space-between" mb="md">
-        <Title order={3}>Complaints</Title>
-        <Button
-          leftSection={<IconPlus size={16} />}
-          onClick={() => setModalOpen(true)}
+    <Container size="lg" py="xl">
+      <Stack gap="lg">
+        <Group justify="space-between" align="center">
+          <Title order={2}>Complaint Management</Title>
+          <Button
+            leftSection={<IconPlus size={18} />}
+            onClick={() => setModalOpen(true)}
+          >
+            New Complaint
+          </Button>
+        </Group>
+
+        {error && (
+          <Alert icon={<IconAlertCircle />} color="red" title="Error">
+            {error}
+          </Alert>
+        )}
+
+        <Stack gap="md">
+          {complaints.length === 0 ? (
+            <Card withBorder p="xl">
+              <p>No complaints found</p>
+            </Card>
+          ) : (
+            complaints.map((complaint) => (
+              <ComplaintCard
+                key={complaint.id}
+                complaint={complaint}
+                onView={() => setSelectedComplaint(complaint)}
+                onEscalate={() => {
+                  setSelectedComplaint(complaint);
+                  setEscalateModalOpen(true);
+                }}
+                onResolve={() => {
+                  setSelectedComplaint(complaint);
+                  setResolveModalOpen(true);
+                }}
+                canEscalate={complaint.status === "open"}
+                canResolve={complaint.status === "in_progress"}
+                showActions
+              />
+            ))
+          )}
+        </Stack>
+
+        <CreateComplaintModal
+          opened={modalOpen}
+          onClose={() => setModalOpen(false)}
+          onSubmit={() => {
+            setModalOpen(false);
+            loadData();
+          }}
+          loading={submitting}
+        />
+
+        <Modal
+          opened={escalateModalOpen}
+          onClose={() => setEscalateModalOpen(false)}
+          title="Escalate Complaint"
+          centered
         >
-          File Complaint
-        </Button>
-      </Group>
+          <Stack gap="md">
+            <Textarea
+              label="Escalation Reason"
+              placeholder="Why is this complaint being escalated?"
+              minRows={3}
+              value={escalationReason}
+              onChange={(e) => setEscalationReason(e.currentTarget.value)}
+            />
+            <Group justify="flex-end">
+              <Button
+                variant="default"
+                onClick={() => setEscalateModalOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                color="orange"
+                loading={submitting}
+                onClick={handleEscalate}
+              >
+                Escalate
+              </Button>
+            </Group>
+          </Stack>
+        </Modal>
 
-      {error && (
-        <Alert icon={<IconAlertCircle size={16} />} color="red" mb="md">
-          {error}
-        </Alert>
-      )}
-
-      <Tabs value={activeTab} onChange={setActiveTab}>
-        <Tabs.List mb="md">
-          <Tabs.Tab value="my" leftSection={<IconUser size={14} />}>
-            My Complaints
-          </Tabs.Tab>
-          <Tabs.Tab value="all" leftSection={<IconList size={14} />}>
-            All Complaints
-          </Tabs.Tab>
-        </Tabs.List>
-
-        <Tabs.Panel value="my">
-          <ComplaintsTable complaints={myComplaints} loading={loading} />
-        </Tabs.Panel>
-
-        <Tabs.Panel value="all">
-          <ComplaintsTable complaints={complaints} loading={loading} />
-        </Tabs.Panel>
-      </Tabs>
-
-      <CreateComplaintModal
-        opened={modalOpen}
-        onClose={() => setModalOpen(false)}
-        onSubmit={handleFileComplaint}
-        loading={submitting}
-      />
-    </Card>
+        <Modal
+          opened={resolveModalOpen}
+          onClose={() => setResolveModalOpen(false)}
+          title="Resolve Complaint"
+          centered
+        >
+          <Stack gap="md">
+            <Textarea
+              label="Resolution Remarks"
+              placeholder="How was this complaint resolved?"
+              minRows={3}
+              value={resolutionRemarks}
+              onChange={(e) => setResolutionRemarks(e.currentTarget.value)}
+            />
+            <Group justify="flex-end">
+              <Button
+                variant="default"
+                onClick={() => setResolveModalOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                color="green"
+                loading={submitting}
+                onClick={handleResolve}
+              >
+                Resolve
+              </Button>
+            </Group>
+          </Stack>
+        </Modal>
+      </Stack>
+    </Container>
   );
 }

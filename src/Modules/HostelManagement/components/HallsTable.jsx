@@ -15,7 +15,7 @@ function HallsTable({ halls, loading, onDelete, onView }) {
     { key: "hall_name", label: "Hall Name" },
     { key: "max_accomodation", label: "Max Capacity" },
     { key: "number_students", label: "Current Students" },
-    { key: "assigned_batch", label: "Assigned Batch" },
+    { key: "number_of_rooms", label: "Number of Rooms" },
     {
       key: "type_of_seater",
       label: "Seater Type",

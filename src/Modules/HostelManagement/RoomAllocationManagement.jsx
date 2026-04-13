@@ -1,0 +1,883 @@
+/**
+ * RoomAllocationManagement - Main Component
+ * Complete room management with creation, allocation, and batch allocation
+ * Orchestrates forms, state, and API calls
+ */
+
+import React, { useState, useEffect } from "react";
+import {
+  Container,
+  Tabs,
+  Button,
+  Group,
+  Stack,
+  Card,
+  Title,
+  Alert,
+  Badge,
+  Table,
+  Loader,
+  Center,
+  ActionIcon,
+  Tooltip,
+  Text,
+  Pagination,
+  Select,
+} from "@mantine/core";
+import {
+  IconPlus,
+  IconAlertCircle,
+  IconCheck,
+  IconX,
+} from "@tabler/icons-react";
+import { notifications } from "@mantine/notifications";
+import { useSelector } from "react-redux";
+import RoomCreationForm from "./components/RoomCreationForm";
+import RoomAllocationForm from "./components/RoomAllocationForm";
+import BatchAllocationForm from "./components/BatchAllocationForm";
+import RoomChangeRequestForm from "./components/RoomChangeRequestForm";
+import {
+  fetchAllActiveBatches,
+  fetchHalls,
+  fetchRoomAllocations,
+  createRoomInHall,
+  deleteRoomAllocation,
+  requestRoomChange,
+  fetchRoomChanges,
+  approveRoomChange,
+  rejectRoomChange,
+  fetchRoomsInHall,
+} from "./api";
+import "@mantine/core/styles.css";
+
+const BASE_URL = "http://127.0.0.1:8000/api/hostel";
+
+export default function RoomAllocationManagement() {
+  const userRole = useSelector((state) => state.user.role);
+  const [activeTab, setActiveTab] = useState("0");
+  // States
+  const [rooms, setRooms] = useState([]);
+  const [allocations, setAllocations] = useState([]);
+  const [halls, setHalls] = useState([]);
+  const [batches, setBatches] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [roomChanges, setRoomChanges] = useState([]);
+  const [availableRooms, setAvailableRooms] = useState([]);
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const [paginationData, setPaginationData] = useState({
+    count: 0,
+    next: null,
+    previous: null,
+  });
+  // Modal states
+  const [roomCreationOpen, setRoomCreationOpen] = useState(false);
+  const [roomAllocationOpen, setRoomAllocationOpen] = useState(false);
+  const [batchAllocationOpen, setBatchAllocationOpen] = useState(false);
+  const [changeModalOpen, setChangeModalOpen] = useState(false);
+  // Loading states
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  // Define loadData function
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      // Fetch halls, batches, and allocations from centralized API functions
+      const [hallsData, batchesData, allocationsResponse, changesData] =
+        await Promise.all([
+          fetchHalls().catch(() => []),
+          fetchAllActiveBatches().catch(() => []),
+          fetchRoomAllocations({
+            page: currentPage,
+            page_size: pageSize,
+          }).catch(() => ({
+            results: [],
+            count: 0,
+            next: null,
+            previous: null,
+          })),
+          fetchRoomChanges().catch(() => []),
+        ]); // Ensure halls have required properties for Select components
+      const processedHalls = Array.isArray(hallsData)
+        ? hallsData.map((h) => ({
+            ...h,
+            name: h.name || h.hall_name || `Hall ${h.id}`,
+          }))
+        : [];
+      console.log("Processed halls data:", processedHalls);
+      setHalls(processedHalls);
+      setBatches(Array.isArray(batchesData) ? batchesData : []);
+      setRooms([]); // Rooms will be managed through room creation form
+      // Handle paginated response
+      if (allocationsResponse && allocationsResponse.results) {
+        setAllocations(allocationsResponse.results);
+        setPaginationData({
+          count: allocationsResponse.count || 0,
+          next: allocationsResponse.next,
+          previous: allocationsResponse.previous,
+        });
+      } else {
+        setAllocations(
+          Array.isArray(allocationsResponse) ? allocationsResponse : [],
+        );
+        setPaginationData({
+          count: allocationsResponse.length || 0,
+          next: null,
+          previous: null,
+        });
+      }
+
+      setRoomChanges(Array.isArray(changesData) ? changesData : []);
+      setStudents([]); // Students will be managed through allocation form
+    } catch (error) {
+      console.error("Failed to load data:", error);
+      notifications.show({
+        title: "Error",
+        message: "Failed to load data",
+        color: "red",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }; // Fetch all data on mount and when page changes
+  useEffect(() => {
+    loadData();
+  }, [currentPage, pageSize]); // Load rooms for change request form when modal opens
+  useEffect(() => {
+    if (changeModalOpen && halls.length > 0 && availableRooms.length === 0) {
+      const loadRoomsForChange = async () => {
+        try {
+          const allRooms = await Promise.allSettled(
+            halls.map(async (hall) => {
+              try {
+                const roomsData = await fetchRoomsInHall(hall.id);
+                if (Array.isArray(roomsData)) {
+                  return roomsData
+                    .filter((r) => r.current_occupancy < r.capacity) // Filter by actual occupancy
+                    .map((r) => ({
+                      id: r.id,
+                      number: r.room_number,
+                      room_type: r.room_type || "single",
+                      capacity: r.capacity,
+                      current_occupancy: r.current_occupancy,
+                      status: r.status,
+                      hall: { id: hall.id, name: hall.name },
+                    }));
+                }
+                return [];
+              } catch (error) {
+                console.warn(
+                  `Failed to fetch rooms for hall ${hall.id}:`,
+                  error,
+                );
+                return [];
+              }
+            }),
+          );
+
+          const flattenedRooms = allRooms
+            .filter((result) => result.status === "fulfilled")
+            .flatMap((result) => result.value || []);
+
+          console.log("Rooms loaded for change:", flattenedRooms.length);
+          setAvailableRooms(flattenedRooms);
+        } catch (error) {
+          console.error("Error loading rooms:", error);
+        }
+      };
+      loadRoomsForChange();
+    }
+  }, [changeModalOpen]);
+  const handleCreateRoom = async (formData) => {
+    try {
+      setSubmitting(true);
+      await createRoomInHall(formData.hall_id, {
+        room_number: formData.room_number,
+        block_number: formData.block_number,
+        room_type: formData.room_type,
+        capacity: formData.capacity,
+      });
+
+      notifications.show({
+        title: "Success",
+        message: "Room created successfully",
+        color: "green",
+      });
+      setRoomCreationOpen(false);
+      loadData();
+    } catch (error) {
+      notifications.show({
+        title: "Error",
+        message: error.message,
+        color: "red",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  const handleAllocateRoom = async (formData) => {
+    try {
+      setSubmitting(true);
+      const token = localStorage.getItem("authToken");
+      const response = await fetch(`${BASE_URL}/room-allocations/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Token ${token}`,
+        },
+        body: JSON.stringify({
+          student: formData.student_id,
+          room: formData.room_id,
+          allocation_date: formData.allocation_date.toISOString().split("T")[0],
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to allocate room");
+      }
+
+      notifications.show({
+        title: "Success",
+        message: "Room allocated successfully",
+        color: "green",
+      });
+      setRoomAllocationOpen(false);
+      loadData();
+    } catch (error) {
+      notifications.show({
+        title: "Error",
+        message: error.message,
+        color: "red",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleBatchAllocation = async (formData) => {
+    try {
+      setSubmitting(true);
+      const token = localStorage.getItem("authToken");
+      const response = await fetch(
+        `${BASE_URL}/room-allocations/bulk-allocate/`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Token ${token}`,
+          },
+          body: JSON.stringify({
+            academic_batch: formData.academic_batch,
+            hall_id: formData.hall_id,
+            allocation_date: formData.allocation_date
+              .toISOString()
+              .split("T")[0],
+            start_room_number: formData.start_room_number,
+            notes: formData.notes,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to perform batch allocation");
+      }
+
+      const result = await response.json();
+      notifications.show({
+        title: "Success",
+        message: `${result.allocated_count || 0} students allocated successfully`,
+        color: "green",
+      });
+      setBatchAllocationOpen(false);
+      loadData();
+    } catch (error) {
+      notifications.show({
+        title: "Error",
+        message: error.message,
+        color: "red",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Handler: Delete Room Allocation (Superadmin only)
+  const handleDeleteAllocation = async (allocationId) => {
+    if (
+      !window.confirm(
+        "Are you sure you want to remove this allocation? This will free up the room space.",
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      await deleteRoomAllocation(allocationId);
+
+      notifications.show({
+        title: "Success",
+        message: "Allocation removed successfully",
+        color: "green",
+      });
+      loadData();
+    } catch (err) {
+      notifications.show({
+        title: "Error",
+        message: err.message || "Failed to delete allocation",
+        color: "red",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Handler: Request Room Change
+  const handleRequestRoomChange = async (formData) => {
+    try {
+      setSubmitting(true);
+      await requestRoomChange(formData);
+
+      notifications.show({
+        title: "Success",
+        message: "Room change request submitted",
+        color: "green",
+      });
+      setChangeModalOpen(false);
+      loadData();
+    } catch (err) {
+      notifications.show({
+        title: "Error",
+        message: err.message || "Failed to request room change",
+        color: "red",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Handler: Approve Room Change (Caretaker only)
+  const handleApproveChange = async (changeId) => {
+    try {
+      setSubmitting(true);
+      await approveRoomChange(changeId, { remarks: "" });
+
+      notifications.show({
+        title: "Success",
+        message: "Room change approved",
+        color: "green",
+      });
+      loadData();
+    } catch (err) {
+      notifications.show({
+        title: "Error",
+        message: err.message || "Failed to approve room change",
+        color: "red",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Handler: Reject Room Change (Caretaker only)
+  const handleRejectChange = async (changeId) => {
+    try {
+      setSubmitting(true);
+      await rejectRoomChange(changeId, { remarks: "Rejected by caretaker" });
+
+      notifications.show({
+        title: "Success",
+        message: "Room change rejected",
+        color: "green",
+      });
+      loadData();
+    } catch (err) {
+      notifications.show({
+        title: "Error",
+        message: err.message || "Failed to reject room change",
+        color: "red",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  if (loading) {
+    return (
+      <Center h="50vh">
+        <Loader size="lg" />
+      </Center>
+    );
+  }
+
+  // Get role-based tabs
+  const getRoleBasedTabs = () => {
+    if (userRole === "super_admin") {
+      return [
+        { value: "0", label: "Batch Allocation" },
+        { value: "1", label: "View Allocations" },
+      ];
+    }
+
+    if (userRole === "caretaker") {
+      return [
+        { value: "0", label: "Create Rooms" },
+        { value: "1", label: "Individual Allocation" },
+        { value: "2", label: "Room Changes" },
+        { value: "3", label: "View Allocations" },
+      ];
+    }
+
+    // Student role
+    return [
+      { value: "0", label: "Room Change Request" },
+      { value: "1", label: "View Allocations" },
+    ];
+  };
+  const roleBasedTabs = getRoleBasedTabs();
+  return (
+    <Container size="100%" py="md" px="md">
+      <Tabs value={activeTab} onChange={setActiveTab}>
+        <Tabs.List>
+          {roleBasedTabs.map((tab) => (
+            <Tabs.Tab key={tab.value} value={tab.value}>
+              {tab.label}
+            </Tabs.Tab>
+          ))}
+        </Tabs.List>
+        {/* SUPER ADMIN: Batch Allocation */}
+        {userRole === "super_admin" && (
+          <Tabs.Panel value="0" pt="md">
+            <Stack>
+              <Group justify="space-between">
+                <Title order={3}>Batch Allocate Rooms</Title>
+                <Button
+                  leftSection={<IconPlus size={16} />}
+                  onClick={() => setBatchAllocationOpen(true)}
+                  color="orange"
+                >
+                  Batch Allocate
+                </Button>
+              </Group>
+
+              <Alert
+                icon={<IconAlertCircle />}
+                color="orange"
+                title="Batch Allocation"
+              >
+                Allocate rooms to multiple students from a specific academic
+                batch in a selected hall. The system will automatically assign
+                available rooms sequentially.
+              </Alert>
+            </Stack>
+          </Tabs.Panel>
+        )}
+        {/* CARETAKER: Create Rooms */}
+        {userRole === "caretaker" && (
+          <Tabs.Panel value="0" pt="md">
+            <Stack>
+              <Group justify="space-between">
+                <Title order={3}>Create New Rooms</Title>
+                <Button
+                  leftSection={<IconPlus size={16} />}
+                  onClick={() => setRoomCreationOpen(true)}
+                >
+                  Create Room
+                </Button>
+              </Group>
+
+              <Alert
+                icon={<IconAlertCircle />}
+                color="blue"
+                title="Room Creation"
+              >
+                Create hostel rooms before allocating them to students. Specify
+                the hall, room number, block, type, and capacity.
+              </Alert>
+
+              {rooms.length > 0 && (
+                <Card withBorder>
+                  <Title order={4} mb="md">
+                    Created Rooms ({rooms.length})
+                  </Title>
+                  <Table striped>
+                    <Table.Thead>
+                      <Table.Tr>
+                        <Table.Th>Hall</Table.Th>
+                        <Table.Th>Room Number</Table.Th>
+                        <Table.Th>Block</Table.Th>
+                        <Table.Th>Type</Table.Th>
+                        <Table.Th>Capacity</Table.Th>
+                        <Table.Th>Status</Table.Th>
+                      </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>
+                      {rooms.map((room) => (
+                        <Table.Tr key={room.id}>
+                          <Table.Td>{room.hall_name}</Table.Td>
+                          <Table.Td>{room.room_number}</Table.Td>
+                          <Table.Td>{room.block_number}</Table.Td>
+                          <Table.Td>{room.room_type}</Table.Td>
+                          <Table.Td>{room.capacity}</Table.Td>
+                          <Table.Td>
+                            <Badge>{room.status}</Badge>
+                          </Table.Td>
+                        </Table.Tr>
+                      ))}
+                    </Table.Tbody>
+                  </Table>
+                </Card>
+              )}
+            </Stack>
+          </Tabs.Panel>
+        )}
+        {/* CARETAKER: Individual Allocation */}
+        {userRole === "caretaker" && (
+          <Tabs.Panel value="1" pt="md">
+            <Stack>
+              <Group justify="space-between">
+                <Title order={3}>Allocate Rooms to Students</Title>
+                <Button
+                  leftSection={<IconPlus size={16} />}
+                  onClick={() => setRoomAllocationOpen(true)}
+                >
+                  Allocate Room
+                </Button>
+              </Group>
+
+              <Alert
+                icon={<IconAlertCircle />}
+                color="blue"
+                title="Individual Allocation"
+              >
+                Allocate specific rooms to individual students. For allocating
+                to multiple students from a batch, use Batch Allocation.
+              </Alert>
+
+              {allocations.length > 0 && (
+                <Card withBorder>
+                  <Title order={4} mb="md">
+                    Room Allocations ({allocations.length})
+                  </Title>
+                  <Table striped>
+                    <Table.Thead>
+                      <Table.Tr>
+                        <Table.Th>Student</Table.Th>
+                        <Table.Th>Room</Table.Th>
+                        <Table.Th>Status</Table.Th>
+                        <Table.Th>Allocation Date</Table.Th>
+                      </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>
+                      {allocations.map((allocation) => (
+                        <Table.Tr key={allocation.id}>
+                          <Table.Td>{allocation.student_name}</Table.Td>
+                          <Table.Td>{allocation.room_number}</Table.Td>
+                          <Table.Td>
+                            <Badge>{allocation.status}</Badge>
+                          </Table.Td>
+                          <Table.Td>{allocation.allocation_date}</Table.Td>
+                        </Table.Tr>
+                      ))}
+                    </Table.Tbody>
+                  </Table>
+                </Card>
+              )}
+            </Stack>
+          </Tabs.Panel>
+        )}
+        {/* CARETAKER: Room Changes */}
+        {userRole === "caretaker" && (
+          <Tabs.Panel value="2" pt="md">
+            <Stack>
+              <Title order={3}>Room Change Requests</Title>
+              <Alert
+                icon={<IconAlertCircle />}
+                color="blue"
+                title="Manage Room Changes"
+              >
+                Review and approve/reject student room change requests. Each
+                change must be reviewed and approved before updating
+                allocations.
+              </Alert>
+
+              {roomChanges.length > 0 ? (
+                <Card withBorder>
+                  <Table striped>
+                    <Table.Thead>
+                      <Table.Tr>
+                        <Table.Th>Student</Table.Th>
+                        <Table.Th>From Room</Table.Th>
+                        <Table.Th>To Room</Table.Th>
+                        <Table.Th>Reason</Table.Th>
+                        <Table.Th>Status</Table.Th>
+                        <Table.Th>Actions</Table.Th>
+                      </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>
+                      {roomChanges.map((change) => (
+                        <Table.Tr key={change.id}>
+                          <Table.Td>{change.student_name}</Table.Td>
+                          <Table.Td>{change.current_room_number}</Table.Td>
+                          <Table.Td>{change.requested_room_number}</Table.Td>
+                          <Table.Td>
+                            <Text size="sm" c="dimmed">
+                              {change.reason.substring(0, 30)}...
+                            </Text>
+                          </Table.Td>
+                          <Table.Td>
+                            <Badge>{change.status}</Badge>
+                          </Table.Td>
+                          <Table.Td>
+                            {change.status === "requested" && (
+                              <Group gap="xs">
+                                <Tooltip label="Approve">
+                                  <ActionIcon
+                                    color="green"
+                                    variant="light"
+                                    onClick={() =>
+                                      handleApproveChange(change.id)
+                                    }
+                                    loading={submitting}
+                                  >
+                                    <IconCheck size={16} />
+                                  </ActionIcon>
+                                </Tooltip>
+                                <Tooltip label="Reject">
+                                  <ActionIcon
+                                    color="red"
+                                    variant="light"
+                                    onClick={() =>
+                                      handleRejectChange(change.id)
+                                    }
+                                    loading={submitting}
+                                  >
+                                    <IconX size={16} />
+                                  </ActionIcon>
+                                </Tooltip>
+                              </Group>
+                            )}
+                          </Table.Td>
+                        </Table.Tr>
+                      ))}
+                    </Table.Tbody>
+                  </Table>
+                </Card>
+              ) : (
+                <Alert icon={<IconAlertCircle />} color="yellow">
+                  No room change requests pending.
+                </Alert>
+              )}
+            </Stack>
+          </Tabs.Panel>
+        )}
+        {/* STUDENT: Room Change Request */}
+        {userRole === "student" && (
+          <Tabs.Panel value="0" pt="md">
+            <Stack>
+              <Group justify="space-between">
+                <Title order={3}>Request Room Change</Title>
+                <Button
+                  leftSection={<IconPlus size={16} />}
+                  onClick={() => setChangeModalOpen(true)}
+                >
+                  Submit Request
+                </Button>
+              </Group>
+
+              <Alert
+                icon={<IconAlertCircle />}
+                color="blue"
+                title="Room Change Request"
+              >
+                Submit a room change request if you wish to move to a different
+                room. Your request must be approved by the caretaker before the
+                change takes effect.
+              </Alert>
+
+              {roomChanges.length > 0 ? (
+                <Card withBorder>
+                  <Title order={4} mb="md">
+                    Your Room Change Requests
+                  </Title>
+                  <Table striped>
+                    <Table.Thead>
+                      <Table.Tr>
+                        <Table.Th>From Room</Table.Th>
+                        <Table.Th>To Room</Table.Th>
+                        <Table.Th>Reason</Table.Th>
+                        <Table.Th>Status</Table.Th>
+                        <Table.Th>Date Requested</Table.Th>
+                      </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>
+                      {roomChanges.map((change) => (
+                        <Table.Tr key={change.id}>
+                          <Table.Td>{change.current_room_number}</Table.Td>
+                          <Table.Td>{change.requested_room_number}</Table.Td>
+                          <Table.Td>{change.reason}</Table.Td>
+                          <Table.Td>
+                            <Badge>{change.status}</Badge>
+                          </Table.Td>
+                          <Table.Td>{change.requested_date}</Table.Td>
+                        </Table.Tr>
+                      ))}
+                    </Table.Tbody>
+                  </Table>
+                </Card>
+              ) : (
+                <Alert icon={<IconAlertCircle />} color="yellow">
+                  You have not submitted any room change requests yet.
+                </Alert>
+              )}
+            </Stack>
+          </Tabs.Panel>
+        )}{" "}
+        {/* View Allocations Tab - For All Roles */}
+        <Tabs.Panel
+          value={
+            userRole === "super_admin"
+              ? "1"
+              : userRole === "caretaker"
+                ? "3"
+                : "1"
+          }
+          pt="md"
+        >
+          <Stack>
+            <Title order={3}>All Room Allocations</Title>{" "}
+            {allocations.length > 0 ? (
+              <Card withBorder p="lg">
+                <div style={{ overflowX: "auto", width: "100%" }}>
+                  <Table striped style={{ width: "100%", minWidth: "900px" }}>
+                    <Table.Thead>
+                      <Table.Tr>
+                        <Table.Th>Student</Table.Th>
+                        <Table.Th>Hall</Table.Th>
+                        <Table.Th>Room</Table.Th>
+                        <Table.Th>Status</Table.Th>
+                        <Table.Th>Allocation Date</Table.Th>
+                        <Table.Th>Release Date</Table.Th>
+                        {userRole === "super_admin" && (
+                          <Table.Th>Actions</Table.Th>
+                        )}
+                      </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>
+                      {allocations.map((allocation) => (
+                        <Table.Tr key={allocation.id}>
+                          <Table.Td>
+                            {allocation.student_name || "N/A"}
+                          </Table.Td>
+                          <Table.Td>{allocation.hall_name || "N/A"}</Table.Td>
+                          <Table.Td>{allocation.room_number || "N/A"}</Table.Td>
+                          <Table.Td>
+                            <Badge>{allocation.status || "unknown"}</Badge>
+                          </Table.Td>
+                          <Table.Td>
+                            {allocation.allocation_date || "-"}
+                          </Table.Td>
+                          <Table.Td>{allocation.release_date || "-"}</Table.Td>
+                          {userRole === "super_admin" && (
+                            <Table.Td>
+                              <Tooltip label="Remove allocation">
+                                <ActionIcon
+                                  color="red"
+                                  variant="light"
+                                  size="sm"
+                                  onClick={() =>
+                                    handleDeleteAllocation(allocation.id)
+                                  }
+                                >
+                                  <IconX size={16} />
+                                </ActionIcon>
+                              </Tooltip>
+                            </Table.Td>
+                          )}
+                        </Table.Tr>
+                      ))}
+                    </Table.Tbody>
+                  </Table>
+                </div>
+              </Card>
+            ) : (
+              <Alert icon={<IconAlertCircle />} color="yellow">
+                No room allocations yet. Start by creating rooms and then
+                allocating them to students.
+              </Alert>
+            )}
+            {allocations.length > 0 && (
+              <Group justify="space-around" align="center" mt="md">
+                <Text size="sm" c="dimmed">
+                  Total: {paginationData.count} allocations (
+                  {allocations.length} on current page)
+                </Text>
+                <Group gap="xs">
+                  <Pagination
+                    value={currentPage}
+                    onChange={setCurrentPage}
+                    total={Math.ceil(paginationData.count / pageSize) || 1}
+                    size="sm"
+                  />
+                  <Select
+                    placeholder="50"
+                    data={["25", "50", "100", "250", "500"]}
+                    value={pageSize.toString()}
+                    onChange={(val) => {
+                      setPageSize(parseInt(val || "50", 10));
+                      setCurrentPage(1);
+                    }}
+                    searchable={false}
+                    clearable={false}
+                    w={80}
+                    size="sm"
+                  />
+                </Group>
+              </Group>
+            )}
+          </Stack>
+        </Tabs.Panel>
+      </Tabs>
+      {/* Modals */}
+      {userRole === "caretaker" && (
+        <>
+          <RoomCreationForm
+            opened={roomCreationOpen}
+            onClose={() => setRoomCreationOpen(false)}
+            onSubmit={handleCreateRoom}
+            loading={submitting}
+            halls={halls}
+          />
+          <RoomAllocationForm
+            opened={roomAllocationOpen}
+            onClose={() => setRoomAllocationOpen(false)}
+            onSubmit={handleAllocateRoom}
+            loading={submitting}
+            students={students}
+            rooms={rooms}
+          />
+        </>
+      )}
+      {userRole === "super_admin" && (
+        <BatchAllocationForm
+          opened={batchAllocationOpen}
+          onClose={() => setBatchAllocationOpen(false)}
+          onSubmit={handleBatchAllocation}
+          loading={submitting}
+          batches={batches}
+          halls={halls}
+        />
+      )}{" "}
+      {userRole === "student" && (
+        <RoomChangeRequestForm
+          opened={changeModalOpen}
+          onClose={() => setChangeModalOpen(false)}
+          onSubmit={handleRequestRoomChange}
+          loading={submitting}
+          halls={halls}
+          availableRooms={availableRooms}
+        />
+      )}
+    </Container>
+  );
+}
