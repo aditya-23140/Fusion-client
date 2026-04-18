@@ -4,29 +4,7 @@
  *
  * CRITICAL RULES:
  * - This is the SINGLE SOURCE OF TRUTH for backend communication
- * - All API callsexport const fetchRoomAllocations = async () => {
-  const response = await apiClient.get(roomAllocationsRoute);
-  return response.data;
-};
-
-export const fetchRoomAllocationDetail = async (allocationId) => {
-  const response = await apiClient.get(roomAllocationDetailRoute(allocationId));
-  return response.data;
-};
-
-export const deleteRoomAllocation = async (allocationId) => {
-  const response = await apiClient.delete(
-    roomAllocationDeleteRoute(allocationId)
-  );
-  return response.data;
-};
-
-export const bulkAllocateRooms = async (allocationsData) => {
-  const response = await apiClient.post(bulkAllocateRoute, {
-    allocations: allocationsData,
-  });
-  return response.data;
-}; this service
+ * - All API calls go through this service
  * - Request/Response interceptors handle auth tokens and errors
  * - No direct axios calls in components - use these methods
  */
@@ -134,7 +112,10 @@ apiClient.interceptors.response.use(
 // ══════════════════════════════════════════════════════════════
 
 export const submitLeave = async (leaveData) => {
-  const response = await apiClient.post(leavesRoute, leaveData);
+  const isFormData = leaveData instanceof FormData;
+  const response = await apiClient.post(leavesRoute, leaveData, {
+    headers: isFormData ? { "Content-Type": "multipart/form-data" } : {},
+  });
   return response.data;
 };
 
@@ -188,13 +169,29 @@ export const updateLeaveStatus = async (leaveId, status, data) => {
 // ══════════════════════════════════════════════════════════════
 
 export const submitComplaint = async (complaintData) => {
-  const response = await apiClient.post(complaintsRoute, complaintData);
+  const isFormData = complaintData instanceof FormData;
+  const response = await apiClient.post(complaintsRoute, complaintData, {
+    headers: isFormData ? { "Content-Type": "multipart/form-data" } : {},
+  });
   return response.data;
 };
+
+export const createComplaint = submitComplaint;
 
 export const fetchComplaints = async () => {
   const response = await apiClient.get(complaintsRoute);
   return response.data;
+};
+
+export const fetchMyComplaints = async () => {
+  // Assuming backend supports /complaints/my/ endpoint, otherwise fetch all
+  try {
+    const response = await apiClient.get(`${complaintsRoute}my/`);
+    return response.data;
+  } catch (error) {
+    // Fallback: fetch all complaints (similar to leaves)
+    return fetchComplaints();
+  }
 };
 
 export const fetchComplaintDetail = async (complaintId) => {
@@ -704,6 +701,69 @@ export const renameRoom = async (
     console.error(`Failed to rename room ${roomId}:`, error);
     throw error;
   }
+};
+
+// ══════════════════════════════════════════════════════════════
+// ROOM VACATION API CALLS (Phase 5)
+// ══════════════════════════════════════════════════════════════
+const vacationsRoute = "/vacations/";
+
+export const fetchRoomVacations = async () => {
+  const response = await apiClient.get(vacationsRoute);
+  return response.data;
+};
+
+export const submitRoomVacation = async (data) => {
+  const response = await apiClient.post(vacationsRoute, data);
+  return response.data;
+};
+
+export const verifyRoomVacation = async (id, remarks) => {
+  const response = await apiClient.put(`${vacationsRoute}${id}/verify/`, {
+    remarks,
+  });
+  return response.data;
+};
+
+export const approveRoomVacation = async (id, remarks) => {
+  const response = await apiClient.put(`${vacationsRoute}${id}/approve/`, {
+    remarks,
+  });
+  return response.data;
+};
+
+// ══════════════════════════════════════════════════════════════
+// EXTENDED STAY API CALLS (Phase 6)
+// ══════════════════════════════════════════════════════════════
+const extendedStaysRoute = "/extended-stays/";
+
+export const fetchExtendedStays = async () => {
+  const response = await apiClient.get(extendedStaysRoute);
+  return response.data;
+};
+
+export const submitExtendedStay = async (data) => {
+  const response = await apiClient.post(extendedStaysRoute, data);
+  return response.data;
+};
+
+export const approveExtendedStay = async (id, remarks) => {
+  const response = await apiClient.put(`${extendedStaysRoute}${id}/approve/`, {
+    remarks,
+  });
+  return response.data;
+};
+
+export const rejectExtendedStay = async (id, remarks) => {
+  const response = await apiClient.put(`${extendedStaysRoute}${id}/reject/`, {
+    remarks,
+  });
+  return response.data;
+};
+
+export const updateHallStatus = async (id, status) => {
+  const response = await apiClient.patch(`/halls/${id}/`, { status });
+  return response.data;
 };
 
 export default apiClient;

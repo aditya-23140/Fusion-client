@@ -25,18 +25,34 @@ import {
 } from "@tabler/icons-react";
 
 const statusColors = {
-  open: "blue",
-  in_progress: "yellow",
+  submitted: "blue",
+  under_review: "yellow",
+  escalated: "orange",
   resolved: "green",
   closed: "gray",
 };
 
+const statusLabels = {
+  submitted: "Submitted",
+  under_review: "Under Review",
+  escalated: "Escalated",
+  resolved: "Resolved",
+  closed: "Closed",
+};
+
 const categoryColors = {
-  maintenance: "purple",
-  hygiene: "orange",
-  noise: "red",
-  behavior: "pink",
+  facility: "purple",
+  food: "orange",
+  security: "red",
+  ragging: "pink",
   other: "gray",
+};
+
+const priorityColors = {
+  low: "gray",
+  medium: "blue",
+  high: "orange",
+  critical: "red",
 };
 
 export default function ComplaintCard({
@@ -66,7 +82,7 @@ export default function ComplaintCard({
             </Stack>
           </Group>
           <Badge color={statusColors[complaint.status] || "gray"}>
-            {complaint.status}
+            {statusLabels[complaint.status] || complaint.status}
           </Badge>
         </Group>
 
@@ -87,6 +103,15 @@ export default function ComplaintCard({
           >
             {complaint.category}
           </Badge>
+          {complaint.priority && (
+            <Badge
+              size="sm"
+              variant="light"
+              color={priorityColors[complaint.priority] || "gray"}
+            >
+              {complaint.priority}
+            </Badge>
+          )}
           {complaint.location && (
             <Badge size="sm" variant="light">
               {complaint.location}
@@ -144,6 +169,7 @@ ComplaintCard.propTypes = {
     status: PropTypes.string.isRequired,
     location: PropTypes.string,
     created_at: PropTypes.string.isRequired,
+    priority: PropTypes.string,
   }).isRequired,
   onView: PropTypes.func,
   onEscalate: PropTypes.func,

@@ -86,8 +86,8 @@ function LeavesTable({
 LeavesTable.propTypes = {
   leaves: PropTypes.arrayOf(PropTypes.shape({})).isRequired,
   loading: PropTypes.bool.isRequired,
-  onApprove: PropTypes.func.isRequired,
-  onReject: PropTypes.func.isRequired,
+  onApprove: PropTypes.func,
+  onReject: PropTypes.func,
   showActions: PropTypes.bool,
 };
 

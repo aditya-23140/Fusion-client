@@ -18,12 +18,13 @@ import {
 } from "@mantine/core";
 import { IconPlus, IconAlertCircle } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
+import { useSelector } from "react-redux";
 import GuestBookingCard from "./components/GuestBookingCard";
 import GuestRoomBookingForm from "./components/GuestRoomBookingForm";
+import ApproveGuestBookingModal from "./components/ApproveGuestBookingModal";
 import {
   fetchGuestBookings,
   requestGuestBooking,
-  approveGuestBooking,
   rejectGuestBooking,
   checkInGuest,
   checkOutGuest,
@@ -35,8 +36,15 @@ export default function GuestRoomBookings() {
   const [bookings, setBookings] = useState([]);
   const [error, setError] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [approveModalOpen, setApproveModalOpen] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState("pending");
+  const userRole = useSelector((state) => state.user.role);
+  const userHallId = useSelector((state) => state.user.hallId); // Get user's hall
+  const isStaff = userRole === "caretaker" || userRole === "warden";
+  const isStudent = userRole === "student";
+
   const loadData = useCallback(async () => {
     try {
       setError(null);
@@ -65,16 +73,18 @@ export default function GuestRoomBookings() {
         arrival_date: formData.arrival_date
           ? formData.arrival_date.toISOString().split("T")[0]
           : null,
-        arrival_time: formData.arrival_time || null,
         departure_date: formData.departure_date
           ? formData.departure_date.toISOString().split("T")[0]
           : null,
-        departure_time: formData.departure_time || null,
         purpose: formData.purpose,
         total_guests: formData.total_guests || 1,
         rooms_required: formData.rooms_required || 1,
         room_type: formData.room_type || "single",
       };
+
+      // DEBUG: Log payload before sending
+      console.log("🔍 [DEBUG] Guest Booking Payload:", bookingPayload);
+      console.log("📤 Sending to /api/hostel/guest-bookings/");
 
       await requestGuestBooking(bookingPayload);
       notifications.show({
@@ -96,21 +106,8 @@ export default function GuestRoomBookings() {
   };
 
   const handleApprove = async (booking) => {
-    try {
-      await approveGuestBooking(booking.id);
-      notifications.show({
-        title: "Success",
-        message: "Booking approved",
-        color: "green",
-      });
-      loadData();
-    } catch (err) {
-      notifications.show({
-        title: "Error",
-        message: err.response?.data?.error || "Failed to approve",
-        color: "red",
-      });
-    }
+    setSelectedBooking(booking);
+    setApproveModalOpen(true);
   };
 
   const handleReject = async (booking) => {
@@ -177,12 +174,14 @@ export default function GuestRoomBookings() {
       <Stack gap="lg">
         <Group justify="space-between" align="center">
           <Title order={2}>Guest Room Bookings</Title>
-          <Button
-            leftSection={<IconPlus size={18} />}
-            onClick={() => setModalOpen(true)}
-          >
-            Book Room
-          </Button>
+          {isStudent && (
+            <Button
+              leftSection={<IconPlus size={18} />}
+              onClick={() => setModalOpen(true)}
+            >
+              Book Room
+            </Button>
+          )}
         </Group>
 
         {error && (
@@ -232,9 +231,9 @@ export default function GuestRoomBookings() {
                     booking={booking}
                     onApprove={() => handleApprove(booking)}
                     onReject={() => handleReject(booking)}
-                    canApprove
-                    canReject
-                    showActions
+                    canApprove={isStaff}
+                    canReject={isStaff}
+                    showActions={isStaff}
                   />
                 ))
               )}
@@ -253,8 +252,8 @@ export default function GuestRoomBookings() {
                     key={booking.id}
                     booking={booking}
                     onCheckIn={() => handleCheckIn(booking)}
-                    canCheckIn
-                    showActions
+                    canCheckIn={isStaff}
+                    showActions={isStaff}
                   />
                 ))
               )}
@@ -273,8 +272,8 @@ export default function GuestRoomBookings() {
                     key={booking.id}
                     booking={booking}
                     onCheckOut={() => handleCheckOut(booking)}
-                    canCheckOut
-                    showActions
+                    canCheckOut={isStaff}
+                    showActions={isStaff}
                   />
                 ))
               )}
@@ -305,6 +304,21 @@ export default function GuestRoomBookings() {
           onClose={() => setModalOpen(false)}
           onSubmit={handleSubmitBooking}
           loading={submitting}
+        />
+
+        <ApproveGuestBookingModal
+          opened={approveModalOpen}
+          onClose={() => {
+            setApproveModalOpen(false);
+            setSelectedBooking(null);
+          }}
+          booking={selectedBooking}
+          hallId={userHallId}
+          onApproveSuccess={() => {
+            loadData();
+            setApproveModalOpen(false);
+            setSelectedBooking(null);
+          }}
         />
       </Stack>
     </Container>

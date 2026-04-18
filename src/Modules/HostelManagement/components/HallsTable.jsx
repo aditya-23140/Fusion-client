@@ -5,11 +5,11 @@
 
 import React from "react";
 import PropTypes from "prop-types";
-import { Badge, ActionIcon, Group, Tooltip } from "@mantine/core";
-import { IconTrash, IconEye } from "@tabler/icons-react";
+import { Badge, ActionIcon, Group, Tooltip, Menu } from "@mantine/core";
+import { IconTrash, IconEye, IconSettings } from "@tabler/icons-react";
 import DataTable from "./DataTable";
 
-function HallsTable({ halls, loading, onDelete, onView }) {
+function HallsTable({ halls, loading, onDelete, onView, onStatusChange }) {
   const columns = [
     { key: "hall_id", label: "Hall ID" },
     { key: "hall_name", label: "Hall Name" },
@@ -34,6 +34,17 @@ function HallsTable({ halls, loading, onDelete, onView }) {
       ),
     },
     {
+      key: "status",
+      label: "Status",
+      render: (value) => {
+        let color = "blue";
+        if (value === "active") color = "green";
+        if (value === "maintenance") color = "orange";
+        if (value === "inactive") color = "red";
+        return <Badge color={color}>{value || "active"}</Badge>;
+      },
+    },
+    {
       key: "actions",
       label: "Actions",
       render: (_, row) => (
@@ -47,15 +58,44 @@ function HallsTable({ halls, loading, onDelete, onView }) {
               <IconEye size={16} />
             </ActionIcon>
           </Tooltip>
-          <Tooltip label="Delete Hall">
-            <ActionIcon
-              variant="light"
-              color="red"
-              onClick={() => onDelete?.(row)}
-            >
-              <IconTrash size={16} />
-            </ActionIcon>
-          </Tooltip>
+
+          {onStatusChange && (
+            <Menu shadow="md" width={150}>
+              <Menu.Target>
+                <Tooltip label="Update Status">
+                  <ActionIcon variant="light" color="orange">
+                    <IconSettings size={16} />
+                  </ActionIcon>
+                </Tooltip>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item onClick={() => onStatusChange(row, "active")}>
+                  Set Active
+                </Menu.Item>
+                <Menu.Item onClick={() => onStatusChange(row, "maintenance")}>
+                  Set Maintenance
+                </Menu.Item>
+                <Menu.Item
+                  onClick={() => onStatusChange(row, "inactive")}
+                  color="red"
+                >
+                  Set Inactive
+                </Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
+          )}
+
+          {onDelete && (
+            <Tooltip label="Delete Hall">
+              <ActionIcon
+                variant="light"
+                color="red"
+                onClick={() => onDelete?.(row)}
+              >
+                <IconTrash size={16} />
+              </ActionIcon>
+            </Tooltip>
+          )}
         </Group>
       ),
     },
@@ -74,8 +114,9 @@ function HallsTable({ halls, loading, onDelete, onView }) {
 HallsTable.propTypes = {
   halls: PropTypes.arrayOf(PropTypes.shape({})).isRequired,
   loading: PropTypes.bool.isRequired,
-  onDelete: PropTypes.func.isRequired,
-  onView: PropTypes.func.isRequired,
+  onDelete: PropTypes.func,
+  onView: PropTypes.func,
+  onStatusChange: PropTypes.func,
 };
 
 export default HallsTable;

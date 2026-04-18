@@ -22,6 +22,7 @@ import {
 import { IconPlus, IconAlertCircle } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import { useForm } from "@mantine/form";
+import { useSelector } from "react-redux";
 import NoticeCard from "./components/NoticeCard";
 import { fetchNotices, createNotice, deleteNotice } from "./api";
 
@@ -33,10 +34,13 @@ export default function NoticeBoard() {
   const [submitting, setSubmitting] = useState(false);
   const [hallId] = useState(null);
 
+  const userRole = useSelector((state) => state.user.role);
+  const isStaff = userRole === "caretaker" || userRole === "warden";
+
   const form = useForm({
     initialValues: {
       title: "",
-      content: "",
+      description: "",
       priority: "medium",
       category: "",
     },
@@ -45,10 +49,10 @@ export default function NoticeBoard() {
         value && value.length >= 5
           ? null
           : "Title must be at least 5 characters",
-      content: (value) =>
+      description: (value) =>
         value && value.length >= 20
           ? null
-          : "Content must be at least 20 characters",
+          : "Description must be at least 20 characters",
       priority: (value) => (value ? null : "Priority is required"),
     },
   });
@@ -134,12 +138,14 @@ export default function NoticeBoard() {
       <Stack gap="lg">
         <Group justify="space-between" align="center">
           <Title order={2}>Notice Board</Title>
-          <Button
-            leftSection={<IconPlus size={18} />}
-            onClick={() => setModalOpen(true)}
-          >
-            Post Notice
-          </Button>
+          {isStaff && (
+            <Button
+              leftSection={<IconPlus size={18} />}
+              onClick={() => setModalOpen(true)}
+            >
+              Post Notice
+            </Button>
+          )}
         </Group>
 
         {error && (
@@ -169,8 +175,8 @@ export default function NoticeBoard() {
                     key={notice.id}
                     notice={notice}
                     onDelete={() => handleDeleteNotice(notice)}
-                    canDelete
-                    showActions
+                    canDelete={isStaff}
+                    showActions={isStaff}
                   />
                 ))}
               </Stack>
@@ -187,8 +193,8 @@ export default function NoticeBoard() {
                     key={notice.id}
                     notice={notice}
                     onDelete={() => handleDeleteNotice(notice)}
-                    canDelete
-                    showActions
+                    canDelete={isStaff}
+                    showActions={isStaff}
                   />
                 ))}
               </Stack>
@@ -205,8 +211,8 @@ export default function NoticeBoard() {
                     key={notice.id}
                     notice={notice}
                     onDelete={() => handleDeleteNotice(notice)}
-                    canDelete
-                    showActions
+                    canDelete={isStaff}
+                    showActions={isStaff}
                   />
                 ))}
               </Stack>
@@ -233,14 +239,14 @@ export default function NoticeBoard() {
                 error={form.errors.title}
               />
               <Textarea
-                label="Content"
+                label="Description"
                 placeholder="Write your notice here"
                 minRows={4}
-                value={form.values.content}
+                value={form.values.description}
                 onChange={(e) =>
-                  form.setFieldValue("content", e.currentTarget.value)
+                  form.setFieldValue("description", e.currentTarget.value)
                 }
-                error={form.errors.content}
+                error={form.errors.description}
               />
               <Select
                 label="Priority"

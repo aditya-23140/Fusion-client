@@ -20,11 +20,9 @@ import {
   SimpleGrid,
   Divider,
 } from "@mantine/core";
-import { DatePickerInput, TimeInput } from "@mantine/dates";
+import { DatePickerInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
-import { IconAlertCircle, IconClock } from "@tabler/icons-react";
-import "@mantine/core/styles.css";
-import "@mantine/dates/styles.css";
+import { IconAlertCircle } from "@tabler/icons-react";
 
 export default function GuestRoomBookingForm({
   opened,
@@ -40,9 +38,7 @@ export default function GuestRoomBookingForm({
       guest_address: "",
       nationality: "",
       arrival_date: null,
-      arrival_time: null,
       departure_date: null,
-      departure_time: null,
       purpose: "",
       total_guests: 1,
       rooms_required: 1,
@@ -66,14 +62,12 @@ export default function GuestRoomBookingForm({
           ? null
           : "Address must be at least 5 characters",
       arrival_date: (value) => (value ? null : "Arrival date is required"),
-      arrival_time: (value) => (value ? null : "Arrival time is required"),
       departure_date: (value, values) => {
         if (!value) return "Departure date is required";
         if (value <= values.arrival_date)
           return "Departure must be after arrival";
         return null;
       },
-      departure_time: (value) => (value ? null : "Departure time is required"),
       purpose: (value) =>
         value && value.length >= 10
           ? null
@@ -183,7 +177,7 @@ export default function GuestRoomBookingForm({
 
           <Divider />
 
-          {/* Booking Dates & Times */}
+          {/* Booking Dates */}
           <div>
             <Text fw={600} size="sm" mb="sm">
               Booking Duration
@@ -207,23 +201,6 @@ export default function GuestRoomBookingForm({
               </div>
 
               <div>
-                <TimeInput
-                  label="Arrival Time"
-                  placeholder="Select time"
-                  value={form.values.arrival_time || ""}
-                  onChange={(event) =>
-                    form.setFieldValue(
-                      "arrival_time",
-                      event.currentTarget.value,
-                    )
-                  }
-                  leftSection={<IconClock size={16} />}
-                  error={form.errors.arrival_time}
-                  withAsterisk
-                />
-              </div>
-
-              <div>
                 <DatePickerInput
                   label="Departure Date"
                   placeholder="Select date"
@@ -236,23 +213,6 @@ export default function GuestRoomBookingForm({
                     month: { tableLayout: "auto" },
                   }}
                   error={form.errors.departure_date}
-                  withAsterisk
-                />
-              </div>
-
-              <div>
-                <TimeInput
-                  label="Departure Time"
-                  placeholder="Select time"
-                  value={form.values.departure_time || ""}
-                  onChange={(event) =>
-                    form.setFieldValue(
-                      "departure_time",
-                      event.currentTarget.value,
-                    )
-                  }
-                  leftSection={<IconClock size={16} />}
-                  error={form.errors.departure_time}
                   withAsterisk
                 />
               </div>

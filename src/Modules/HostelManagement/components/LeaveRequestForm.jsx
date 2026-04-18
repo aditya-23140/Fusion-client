@@ -12,10 +12,13 @@ import {
   Group,
   TextInput,
   Textarea,
-  DatePicker,
   Stack,
+  SimpleGrid,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
+import { DatePickerInput } from "@mantine/dates";
+import "@mantine/core/styles.css";
+import "@mantine/dates/styles.css";
 
 export default function LeaveRequestForm({
   opened,
@@ -48,7 +51,19 @@ export default function LeaveRequestForm({
 
   const handleSubmit = async (values) => {
     try {
-      await onSubmit(values);
+      // Format dates for backend (YYYY-MM-DD)
+      const formattedValues = {
+        ...values,
+        start_date:
+          values.start_date instanceof Date
+            ? values.start_date.toISOString().split("T")[0]
+            : values.start_date,
+        end_date:
+          values.end_date instanceof Date
+            ? values.end_date.toISOString().split("T")[0]
+            : values.end_date,
+      };
+      await onSubmit(formattedValues);
       form.reset();
     } catch (error) {
       console.error("Form submission error:", error);
@@ -65,25 +80,26 @@ export default function LeaveRequestForm({
     >
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Stack gap="md">
-          {" "}
-          <Group grow>
-            <DatePicker
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+            <DatePickerInput
               label="Start Date"
               placeholder="Select start date"
               minDate={new Date()}
               value={form.values.start_date}
               onChange={(value) => form.setFieldValue("start_date", value)}
               error={form.errors.start_date}
+              withAsterisk
             />
-            <DatePicker
+            <DatePickerInput
               label="End Date"
               placeholder="Select end date"
               minDate={form.values.start_date || new Date()}
               value={form.values.end_date}
               onChange={(value) => form.setFieldValue("end_date", value)}
               error={form.errors.end_date}
+              withAsterisk
             />
-          </Group>
+          </SimpleGrid>
           <Textarea
             label="Reason for Leave"
             placeholder="Provide details about your leave request"
@@ -94,24 +110,26 @@ export default function LeaveRequestForm({
             }
             error={form.errors.reason}
           />
-          <TextInput
-            label="Destination"
-            placeholder="Where will you be during the leave?"
-            value={form.values.destination}
-            onChange={(e) =>
-              form.setFieldValue("destination", e.currentTarget.value)
-            }
-            error={form.errors.destination}
-          />
-          <TextInput
-            label="Contact Phone"
-            placeholder="+91 XXXXXXXXXX"
-            value={form.values.contact_phone}
-            onChange={(e) =>
-              form.setFieldValue("contact_phone", e.currentTarget.value)
-            }
-            error={form.errors.contact_phone}
-          />
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+            <TextInput
+              label="Destination"
+              placeholder="Where will you be?"
+              value={form.values.destination}
+              onChange={(e) =>
+                form.setFieldValue("destination", e.currentTarget.value)
+              }
+              error={form.errors.destination}
+            />
+            <TextInput
+              label="Contact Phone"
+              placeholder="+91 XXXXXXXXXX"
+              value={form.values.contact_phone}
+              onChange={(e) =>
+                form.setFieldValue("contact_phone", e.currentTarget.value)
+              }
+              error={form.errors.contact_phone}
+            />
+          </SimpleGrid>
           <Group justify="flex-end" mt="md">
             <Button variant="default" onClick={onClose}>
               Cancel

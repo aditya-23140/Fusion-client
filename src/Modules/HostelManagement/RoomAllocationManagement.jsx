@@ -47,6 +47,14 @@ import {
   approveRoomChange,
   rejectRoomChange,
   fetchRoomsInHall,
+  fetchRoomVacations,
+  submitRoomVacation,
+  verifyRoomVacation,
+  approveRoomVacation,
+  fetchExtendedStays,
+  submitExtendedStay,
+  approveExtendedStay,
+  rejectExtendedStay,
 } from "./api";
 import "@mantine/core/styles.css";
 
@@ -62,6 +70,8 @@ export default function RoomAllocationManagement() {
   const [batches, setBatches] = useState([]);
   const [students, setStudents] = useState([]);
   const [roomChanges, setRoomChanges] = useState([]);
+  const [vacations, setVacations] = useState([]);
+  const [extendedStays, setExtendedStays] = useState([]);
   const [availableRooms, setAvailableRooms] = useState([]);
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -76,29 +86,40 @@ export default function RoomAllocationManagement() {
   const [roomAllocationOpen, setRoomAllocationOpen] = useState(false);
   const [batchAllocationOpen, setBatchAllocationOpen] = useState(false);
   const [changeModalOpen, setChangeModalOpen] = useState(false);
+  const [vacationModalOpen, setVacationModalOpen] = useState(false);
+  const [extendedStayModalOpen, setExtendedStayModalOpen] = useState(false);
   // Loading states
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+
   // Define loadData function
   const loadData = async () => {
     try {
       setLoading(true);
       // Fetch halls, batches, and allocations from centralized API functions
-      const [hallsData, batchesData, allocationsResponse, changesData] =
-        await Promise.all([
-          fetchHalls().catch(() => []),
-          fetchAllActiveBatches().catch(() => []),
-          fetchRoomAllocations({
-            page: currentPage,
-            page_size: pageSize,
-          }).catch(() => ({
-            results: [],
-            count: 0,
-            next: null,
-            previous: null,
-          })),
-          fetchRoomChanges().catch(() => []),
-        ]); // Ensure halls have required properties for Select components
+      const [
+        hallsData,
+        batchesData,
+        allocationsResponse,
+        changesData,
+        vacationsData,
+        extendedStaysData,
+      ] = await Promise.all([
+        fetchHalls().catch(() => []),
+        fetchAllActiveBatches().catch(() => []),
+        fetchRoomAllocations({
+          page: currentPage,
+          page_size: pageSize,
+        }).catch(() => ({
+          results: [],
+          count: 0,
+          next: null,
+          previous: null,
+        })),
+        fetchRoomChanges().catch(() => []),
+        fetchRoomVacations().catch(() => []),
+        fetchExtendedStays().catch(() => []),
+      ]); // Ensure halls have required properties for Select components
       const processedHalls = Array.isArray(hallsData)
         ? hallsData.map((h) => ({
             ...h,
@@ -109,7 +130,7 @@ export default function RoomAllocationManagement() {
       setHalls(processedHalls);
       setBatches(Array.isArray(batchesData) ? batchesData : []);
       setRooms([]); // Rooms will be managed through room creation form
-      // Handle paginated response
+
       if (allocationsResponse && allocationsResponse.results) {
         setAllocations(allocationsResponse.results);
         setPaginationData({
@@ -129,6 +150,10 @@ export default function RoomAllocationManagement() {
       }
 
       setRoomChanges(Array.isArray(changesData) ? changesData : []);
+      setVacations(Array.isArray(vacationsData) ? vacationsData : []);
+      setExtendedStays(
+        Array.isArray(extendedStaysData) ? extendedStaysData : [],
+      );
       setStudents([]); // Students will be managed through allocation form
     } catch (error) {
       console.error("Failed to load data:", error);
@@ -402,6 +427,124 @@ export default function RoomAllocationManagement() {
       setSubmitting(false);
     }
   };
+  // Handlers for Room Vacation
+  const handleRequestVacation = async (formData) => {
+    try {
+      setSubmitting(true);
+      await submitRoomVacation(formData);
+      notifications.show({
+        title: "Success",
+        message: "Vacation requested",
+        color: "green",
+      });
+      setVacationModalOpen(false);
+      loadData();
+    } catch (err) {
+      notifications.show({
+        title: "Error",
+        message: err.message || "Failed to request",
+        color: "red",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleVerifyVacation = async (id) => {
+    try {
+      await verifyRoomVacation(id, "Caretaker verified");
+      notifications.show({
+        title: "Success",
+        message: "Verified",
+        color: "green",
+      });
+      loadData();
+    } catch (err) {
+      notifications.show({
+        title: "Error",
+        message: err.message,
+        color: "red",
+      });
+    }
+  };
+
+  const handleApproveVacation = async (id) => {
+    try {
+      await approveRoomVacation(id, "Warden approved");
+      notifications.show({
+        title: "Success",
+        message: "Approved",
+        color: "green",
+      });
+      loadData();
+    } catch (err) {
+      notifications.show({
+        title: "Error",
+        message: err.message,
+        color: "red",
+      });
+    }
+  };
+
+  // Handlers for Extended Stays
+  const handleRequestExtendedStay = async (formData) => {
+    try {
+      setSubmitting(true);
+      await submitExtendedStay(formData);
+      notifications.show({
+        title: "Success",
+        message: "Extended stay requested",
+        color: "green",
+      });
+      setExtendedStayModalOpen(false);
+      loadData();
+    } catch (err) {
+      notifications.show({
+        title: "Error",
+        message: err.message || "Failed to request",
+        color: "red",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleApproveExtendedStay = async (id) => {
+    try {
+      await approveExtendedStay(id, "Approved");
+      notifications.show({
+        title: "Success",
+        message: "Approved",
+        color: "green",
+      });
+      loadData();
+    } catch (err) {
+      notifications.show({
+        title: "Error",
+        message: err.message,
+        color: "red",
+      });
+    }
+  };
+
+  const handleRejectExtendedStay = async (id) => {
+    try {
+      await rejectExtendedStay(id, "Rejected");
+      notifications.show({
+        title: "Success",
+        message: "Rejected",
+        color: "green",
+      });
+      loadData();
+    } catch (err) {
+      notifications.show({
+        title: "Error",
+        message: err.message,
+        color: "red",
+      });
+    }
+  };
+
   if (loading) {
     return (
       <Center h="50vh">
@@ -425,6 +568,8 @@ export default function RoomAllocationManagement() {
         { value: "1", label: "Individual Allocation" },
         { value: "2", label: "Room Changes" },
         { value: "3", label: "View Allocations" },
+        { value: "4", label: "Room Vacations" },
+        { value: "5", label: "Extended Stays" },
       ];
     }
 
@@ -432,6 +577,8 @@ export default function RoomAllocationManagement() {
     return [
       { value: "0", label: "Room Change Request" },
       { value: "1", label: "View Allocations" },
+      { value: "2", label: "Room Vacation" },
+      { value: "3", label: "Extended Stays" },
     ];
   };
   const roleBasedTabs = getRoleBasedTabs();
@@ -837,6 +984,190 @@ export default function RoomAllocationManagement() {
             )}
           </Stack>
         </Tabs.Panel>
+        {/* STUDENT: Room Vacation */}
+        {userRole === "student" && (
+          <Tabs.Panel value="2" pt="md">
+            <Stack>
+              <Group justify="space-between">
+                <Title order={3}>Room Vacation</Title>
+                <Button onClick={() => setVacationModalOpen(true)}>
+                  Request Room Vacation
+                </Button>
+              </Group>
+              <Card withBorder>
+                <Table striped>
+                  <Table.Thead>
+                    <Table.Tr>
+                      <Table.Th>Date</Table.Th>
+                      <Table.Th>Status</Table.Th>
+                    </Table.Tr>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {vacations.map((v) => (
+                      <Table.Tr key={v.id}>
+                        <Table.Td>{v.vacation_date}</Table.Td>
+                        <Table.Td>
+                          <Badge>{v.status}</Badge>
+                        </Table.Td>
+                      </Table.Tr>
+                    ))}
+                  </Table.Tbody>
+                </Table>
+              </Card>
+            </Stack>
+          </Tabs.Panel>
+        )}
+        {/* STUDENT: Extended Stay */}
+        {userRole === "student" && (
+          <Tabs.Panel value="3" pt="md">
+            <Stack>
+              <Group justify="space-between">
+                <Title order={3}>Extended Stays</Title>
+                <Button onClick={() => setExtendedStayModalOpen(true)}>
+                  Request Extended Stay
+                </Button>
+              </Group>
+              <Card withBorder>
+                <Table striped>
+                  <Table.Thead>
+                    <Table.Tr>
+                      <Table.Th>Start</Table.Th>
+                      <Table.Th>End</Table.Th>
+                      <Table.Th>Status</Table.Th>
+                    </Table.Tr>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {extendedStays.map((s) => (
+                      <Table.Tr key={s.id}>
+                        <Table.Td>{s.start_date}</Table.Td>
+                        <Table.Td>{s.end_date}</Table.Td>
+                        <Table.Td>
+                          <Badge>{s.status}</Badge>
+                        </Table.Td>
+                      </Table.Tr>
+                    ))}
+                  </Table.Tbody>
+                </Table>
+              </Card>
+            </Stack>
+          </Tabs.Panel>
+        )}
+        {/* CARETAKER: Room Vacations */}
+        {userRole === "caretaker" && (
+          <Tabs.Panel value="4" pt="md">
+            <Stack>
+              <Title order={3}>Room Vacations Verification</Title>
+              <Card withBorder>
+                <Table striped>
+                  <Table.Thead>
+                    <Table.Tr>
+                      <Table.Th>Student</Table.Th>
+                      <Table.Th>Room</Table.Th>
+                      <Table.Th>Date</Table.Th>
+                      <Table.Th>Status</Table.Th>
+                      <Table.Th>Actions</Table.Th>
+                    </Table.Tr>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {vacations.map((v) => (
+                      <Table.Tr key={v.id}>
+                        <Table.Td>{v.student_name}</Table.Td>
+                        <Table.Td>{v.room_number}</Table.Td>
+                        <Table.Td>{v.vacation_date}</Table.Td>
+                        <Table.Td>
+                          <Badge>{v.status}</Badge>
+                        </Table.Td>
+                        <Table.Td>
+                          <Group gap="xs">
+                            {v.status === "pending" && (
+                              <Button
+                                size="xs"
+                                onClick={() => handleVerifyVacation(v.id)}
+                              >
+                                Verify
+                              </Button>
+                            )}
+                            {v.status === "verified" &&
+                              userRole === "caretaker" && (
+                                <Button
+                                  size="xs"
+                                  color="green"
+                                  onClick={() => handleApproveVacation(v.id)}
+                                >
+                                  Approve
+                                </Button>
+                              )}
+                          </Group>
+                        </Table.Td>
+                      </Table.Tr>
+                    ))}
+                  </Table.Tbody>
+                </Table>
+              </Card>
+            </Stack>
+          </Tabs.Panel>
+        )}
+        {/* CARETAKER: Extended Stays */}
+        {userRole === "caretaker" && (
+          <Tabs.Panel value="5" pt="md">
+            <Stack>
+              <Title order={3}>Extended Stays Approval</Title>
+              <Card withBorder>
+                <Table striped>
+                  <Table.Thead>
+                    <Table.Tr>
+                      <Table.Th>Student</Table.Th>
+                      <Table.Th>Room</Table.Th>
+                      <Table.Th>Range</Table.Th>
+                      <Table.Th>Reason</Table.Th>
+                      <Table.Th>Status</Table.Th>
+                      <Table.Th>Actions</Table.Th>
+                    </Table.Tr>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {extendedStays.map((s) => (
+                      <Table.Tr key={s.id}>
+                        <Table.Td>{s.student_name}</Table.Td>
+                        <Table.Td>{s.room_number}</Table.Td>
+                        <Table.Td>
+                          {s.start_date} - {s.end_date}
+                        </Table.Td>
+                        <Table.Td>{s.reason}</Table.Td>
+                        <Table.Td>
+                          <Badge>{s.status}</Badge>
+                        </Table.Td>
+                        <Table.Td>
+                          <Group gap="xs">
+                            {s.status === "submitted" && (
+                              <>
+                                <Button
+                                  size="xs"
+                                  color="green"
+                                  onClick={() =>
+                                    handleApproveExtendedStay(s.id)
+                                  }
+                                >
+                                  Approve
+                                </Button>
+                                <Button
+                                  size="xs"
+                                  color="red"
+                                  onClick={() => handleRejectExtendedStay(s.id)}
+                                >
+                                  Reject
+                                </Button>
+                              </>
+                            )}
+                          </Group>
+                        </Table.Td>
+                      </Table.Tr>
+                    ))}
+                  </Table.Tbody>
+                </Table>
+              </Card>
+            </Stack>
+          </Tabs.Panel>
+        )}
       </Tabs>
       {/* Modals */}
       {userRole === "caretaker" && (
@@ -869,14 +1200,139 @@ export default function RoomAllocationManagement() {
         />
       )}{" "}
       {userRole === "student" && (
-        <RoomChangeRequestForm
-          opened={changeModalOpen}
-          onClose={() => setChangeModalOpen(false)}
-          onSubmit={handleRequestRoomChange}
-          loading={submitting}
-          halls={halls}
-          availableRooms={availableRooms}
-        />
+        <>
+          <RoomChangeRequestForm
+            opened={changeModalOpen}
+            onClose={() => setChangeModalOpen(false)}
+            onSubmit={handleRequestRoomChange}
+            loading={submitting}
+            halls={halls}
+            availableRooms={availableRooms}
+          />
+
+          {/* Simple Modals for Vacations and Extended Stays */}
+          {vacationModalOpen && (
+            <div
+              style={{
+                position: "fixed",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: "100%",
+                backgroundColor: "rgba(0,0,0,0.5)",
+                zIndex: 1000,
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <Card style={{ width: 400 }}>
+                <Title order={4} mb="md">
+                  Request Room Vacation
+                </Title>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    // const room = allocations.find(a => a.student_name); // simplistic
+                    handleRequestVacation({
+                      vacation_date: e.target.date.value,
+                      hall: allocations[0]?.hall_id || 1,
+                      room: allocations[0]?.room || 1,
+                    });
+                  }}
+                >
+                  <input
+                    type="date"
+                    name="date"
+                    required
+                    style={{ width: "100%", marginBottom: 15, padding: 8 }}
+                  />
+                  <Group justify="flex-end">
+                    <Button
+                      variant="default"
+                      onClick={() => setVacationModalOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit" loading={submitting}>
+                      Submit
+                    </Button>
+                  </Group>
+                </form>
+              </Card>
+            </div>
+          )}
+
+          {extendedStayModalOpen && (
+            <div
+              style={{
+                position: "fixed",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: "100%",
+                backgroundColor: "rgba(0,0,0,0.5)",
+                zIndex: 1000,
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <Card style={{ width: 400 }}>
+                <Title order={4} mb="md">
+                  Request Extended Stay
+                </Title>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleRequestExtendedStay({
+                      start_date: e.target.start.value,
+                      end_date: e.target.end.value,
+                      reason: e.target.reason.value,
+                      hall: allocations[0]?.hall_id || 1,
+                      room: allocations[0]?.room || 1,
+                    });
+                  }}
+                >
+                  <input
+                    type="date"
+                    name="start"
+                    required
+                    style={{ width: "100%", marginBottom: 15, padding: 8 }}
+                  />
+                  <input
+                    type="date"
+                    name="end"
+                    required
+                    style={{ width: "100%", marginBottom: 15, padding: 8 }}
+                  />
+                  <textarea
+                    name="reason"
+                    placeholder="Reason"
+                    required
+                    style={{
+                      width: "100%",
+                      marginBottom: 15,
+                      padding: 8,
+                      height: 100,
+                    }}
+                  />
+                  <Group justify="flex-end">
+                    <Button
+                      variant="default"
+                      onClick={() => setExtendedStayModalOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit" loading={submitting}>
+                      Submit
+                    </Button>
+                  </Group>
+                </form>
+              </Card>
+            </div>
+          )}
+        </>
       )}
     </Container>
   );
