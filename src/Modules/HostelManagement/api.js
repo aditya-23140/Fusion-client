@@ -39,9 +39,9 @@ import {
   roomChangeRejectRoute,
   // Fine Management (HM-WF-105)
   finesRoute,
-  fineDetailRoute,
-  fineMarkPaidRoute,
-  fineWaiveRoute,
+  // fineDetailRoute,
+  // fineMarkPaidRoute,
+  // fineWaiveRoute,
   // Staff Scheduling (HM-WF-107)
   schedulesRoute,
   scheduleDetailRoute,
@@ -124,15 +124,9 @@ apiClient.interceptors.response.use(
 
 export const submitLeave = async (leaveData) => {
   const isFormData = leaveData instanceof FormData;
-  const config = {};
-
-  if (isFormData) {
-    // We NEED the browser to set the boundary, so we force Axios
-    // to NOT set the Content-Type to application/json by default.
-    config.headers = { "Content-Type": "multipart/form-data" };
-  }
-
-  const response = await apiClient.post(leavesRoute, leaveData, config);
+  const response = await apiClient.post(leavesRoute, leaveData, {
+    headers: isFormData ? { "Content-Type": "multipart/form-data" } : {},
+  });
   return response.data;
 };
 
@@ -160,30 +154,23 @@ export const fetchLeaveDetail = async (leaveId) => {
   return response.data;
 };
 
-export const approveLeave = async (leaveId, decisionRemarks) => {
-  const response = await apiClient.patch(leaveApproveRoute(leaveId), {
-    status: "Approved",
-    decision_remarks: decisionRemarks,
-  });
+export const approveLeave = async (leaveId, data) => {
+  const response = await apiClient.post(leaveApproveRoute(leaveId), data);
   return response.data;
 };
 
-export const rejectLeave = async (leaveId, decisionRemarks) => {
-  const response = await apiClient.patch(leaveRejectRoute(leaveId), {
-    status: "Rejected",
-    decision_remarks: decisionRemarks,
-  });
+export const rejectLeave = async (leaveId, data) => {
+  const response = await apiClient.post(leaveRejectRoute(leaveId), data);
   return response.data;
 };
 
-export const updateLeaveStatus = async ({ leave_id, status, remarks }) => {
-  // Normalize status and call appropriate method
-  const normalizedStatus = status.toLowerCase();
-  if (normalizedStatus === "approved") {
-    return approveLeave(leave_id, remarks);
+export const updateLeaveStatus = async (leaveId, status, data) => {
+  // Route to update leave status (approve/reject based on status)
+  if (status === "approved") {
+    return approveLeave(leaveId, data);
   }
-  if (normalizedStatus === "rejected") {
-    return rejectLeave(leave_id, remarks);
+  if (status === "rejected") {
+    return rejectLeave(leaveId, data);
   }
   throw new Error("Invalid leave status");
 };
@@ -363,28 +350,45 @@ export const rejectRoomChange = async (changeId, data) => {
 // HM-WF-105: FINE MANAGEMENT API CALLS
 // ══════════════════════════════════════════════════════════════
 
-export const imposeFine = async (fineData) => {
-  const response = await apiClient.post(finesRoute, fineData);
-  return response.data;
-};
-
 export const fetchFines = async () => {
   const response = await apiClient.get(finesRoute);
   return response.data;
 };
 
-export const fetchFineDetail = async (fineId) => {
-  const response = await apiClient.get(fineDetailRoute(fineId));
+export const fetchRepeatOffenders = async (threshold = 3) => {
+  const response = await apiClient.get(`${finesRoute}repeat-offenders/`, {
+    params: { threshold },
+  });
   return response.data;
 };
 
-export const markFinePaid = async (fineId, data) => {
-  const response = await apiClient.post(fineMarkPaidRoute(fineId), data);
+export const fetchFineReport = async () => {
+  const response = await apiClient.get(`${finesRoute}report/`);
   return response.data;
 };
 
-export const waiveFine = async (fineId, data) => {
-  const response = await apiClient.post(fineWaiveRoute(fineId), data);
+export const imposeFine = async (fineData) => {
+  const isFormData = fineData instanceof FormData;
+  const response = await apiClient.post(finesRoute, fineData, {
+    headers: isFormData ? { "Content-Type": "multipart/form-data" } : {},
+  });
+  return response.data;
+};
+
+export const markFinePaid = async (fineId) => {
+  const response = await apiClient.post(`${finesRoute}${fineId}/mark-paid/`);
+  return response.data;
+};
+
+export const waiveFine = async (fineId, remarks) => {
+  const response = await apiClient.patch(`${finesRoute}${fineId}/waive/`, {
+    waive_reason: remarks,
+  });
+  return response.data;
+};
+
+export const fetchStudentByRoll = async (rollNumber) => {
+  const response = await apiClient.get(`${finesRoute}student/${rollNumber}/`);
   return response.data;
 };
 
@@ -607,11 +611,9 @@ export const fetchRoomsInHall = async (hallId) => {
  * @param {number|string} hallId - The ID of the hall
  * @returns {Promise<Array>} Array of attendance records for the hall
  */
-export const fetchAttendance = async (hallId, date) => {
+export const fetchAttendance = async (hallId) => {
   try {
-    const params = { hall_id: hallId };
-    if (date) params.date = date;
-    const response = await apiClient.get(listAttendanceRoute, { params });
+    const response = await apiClient.get(listAttendanceRoute(hallId));
     return response.data;
   } catch (error) {
     console.error(`Failed to fetch attendance for hall ${hallId}:`, error);

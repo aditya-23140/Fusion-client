@@ -1,77 +1,84 @@
 /**
- * FineManagement - Thin View (UC-016, UC-017, UC-018)
- * Manages hostel fines
- * Orchestrates components and handles state, calls api.js
+ * FineManagement - Simplified Disciplinary Module (HM-WF-105)
+ * Clean, simple, and functional interface for fine management.
  * Role-based visibility:
- * - Student: View own fines (My Fines)
- * - Caretaker: Impose fines, mark paid, waive
- * - Warden: Monitor fines, analyze
+ * - Student: View personal fines
+ * - Caretaker/Warden: Impose and manage fines
  */
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Container,
+  Grid,
   Card,
   Title,
   Button,
   Group,
-  Alert,
-  Tabs,
   Stack,
   Badge,
   Text,
-  Select,
   Loader,
   Center,
+  Tabs,
+  Table,
+  ScrollArea,
+  TextInput,
+  Paper,
+  ActionIcon,
+  Tooltip,
+  Modal,
+  Divider,
+  Timeline,
+  Paper as MantinePaper,
 } from "@mantine/core";
 import {
   IconPlus,
-  IconAlertCircle,
-  IconUser,
-  IconList,
   IconDownload,
+  IconSearch,
+  IconList,
+  IconUser,
+  IconAlertTriangle,
+  IconCheck,
+  IconEye,
+  IconCalendar,
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import { useSelector } from "react-redux";
-import FineStatusCard from "./components/FineStatusCard";
+import * as XLSX from "xlsx";
+import { fetchFines, fetchFineReport, markFinePaid, imposeFine } from "./api";
 import ImposeFineModal from "./components/ImposeFineModal";
-import { fetchFines, imposeFine, markFinePaid, waiveFine } from "./api";
 
 export default function FineManagement() {
   const [fines, setFines] = useState([]);
-  const [myFines, setMyFines] = useState([]);
+  const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [statusFilter, setStatusFilter] = useState(null);
-  const [categoryFilter, setCategoryFilter] = useState(null);
+  const [selectedFine, setSelectedFine] = useState(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   const userRole = useSelector((state) => state.user.role);
-  const isStaff = userRole === "caretaker" || userRole === "warden";
   const isStudent = userRole === "student";
-
-  const [activeTab, setActiveTab] = useState(isStudent ? "my" : "all");
+  const isWarden = userRole === "warden";
+  const isCaretaker = userRole === "caretaker";
+  const isStaff = isWarden || isCaretaker;
 
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      setError(null);
-      const finesData = await fetchFines();
-
-      if (isStudent) {
-        setMyFines(
-          finesData.filter(
-            (f) => f.is_my_fine || f.student_id === "me" || f.is_mine,
-          ),
-        ); // Adjust based on actual API
-      } else {
-        setFines(finesData);
-        setMyFines(finesData.filter((f) => f.is_my_fine || f.is_mine));
-      }
+      const [finesData, reportData] = await Promise.all([
+        fetchFines(),
+        !isStudent ? fetchFineReport() : Promise.resolve(null),
+      ]);
+      setFines(finesData || []);
+      setReport(reportData);
     } catch (err) {
-      setError("Failed to load fines. Please try again.");
-      console.error(err);
+      notifications.show({
+        title: "Error",
+        message: "Failed to load fine data.",
+        color: "red",
+      });
     } finally {
       setLoading(false);
     }
@@ -81,338 +88,327 @@ export default function FineManagement() {
     loadData();
   }, [loadData]);
 
-  const handleImposeFine = async (formData) => {
-    try {
-      setSubmitting(true);
-      await imposeFine(formData);
-      notifications.show({
-        title: "Success",
-        message: "Fine imposed successfully. Student notified.",
-        color: "green",
-      });
-      setModalOpen(false);
-      loadData();
-    } catch (err) {
-      notifications.show({
-        title: "Error",
-        message:
-          err.response?.data?.detail ||
-          err.response?.data?.error ||
-          "Failed to impose fine",
-        color: "red",
-      });
-    } finally {
-      setSubmitting(false);
-    }
+  const handleExport = () => {
+    if (!fines || fines.length === 0) return;
+    const ws = XLSX.utils.json_to_sheet(fines);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Fines");
+    XLSX.writeFile(wb, "Hostel_Fines.xlsx");
   };
 
-  const handleMarkPaid = async (fine) => {
+  const handleMarkPaid = async (id) => {
     try {
-      await markFinePaid(fine.id);
+      await markFinePaid(id);
       notifications.show({
         title: "Success",
-        message: "Fine marked as paid",
+        message: "Fine marked as paid.",
         color: "green",
       });
       loadData();
     } catch (err) {
       notifications.show({
         title: "Error",
-        message: err.response?.data?.detail || "Failed to mark as paid",
+        message: "Action failed.",
         color: "red",
       });
     }
   };
 
-  const handleWaiveFine = async (fine) => {
-    try {
-      await waiveFine(fine.id);
-      notifications.show({
-        title: "Success",
-        message: "Fine waived successfully",
-        color: "green",
-      });
-      loadData();
-    } catch (err) {
-      notifications.show({
-        title: "Error",
-        message: err.response?.data?.detail || "Failed to waive fine",
-        color: "red",
-      });
-    }
-  };
-
-  // Safe checks for amount and status
-  const totalAmount = fines.reduce(
-    (sum, fine) => sum + (Number(fine.amount) || 0),
-    0,
-  );
-  const paidAmount = fines
-    .filter((f) => f.status?.toLowerCase() === "paid")
-    .reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
-  const pendingAmount = totalAmount - paidAmount;
-
-  // Filter fines
-  const filterFinesList = (list) => {
-    let result = list;
-    if (statusFilter) {
-      result = result.filter((f) => f.status?.toLowerCase() === statusFilter);
-    }
-    if (categoryFilter) {
-      result = result.filter((f) => f.violation_category === categoryFilter);
-    }
-    return result;
-  };
-
-  const filteredFines = filterFinesList(fines);
-  const filteredMyFines = filterFinesList(myFines);
-
-  const handleGenerateReport = () => {
-    if (filteredFines.length === 0) {
-      notifications.show({
-        title: "No Data",
-        message: "There are no fine records to export.",
-        color: "yellow",
-      });
-      return;
-    }
-
-    const headers = [
-      "ID",
-      "Student",
-      "Amount",
-      "Fine Type",
-      "Category",
-      "Status",
-      "Reason",
-      "Date",
-    ];
-    const csvContent = [
-      headers.join(","),
-      ...filteredFines.map((f) =>
-        [
-          f.id,
-          `"${f.student_id || f.student?.id || ""}"`,
-          f.amount,
-          `"${f.fine_type || ""}"`,
-          `"${f.violation_category || ""}"`,
-          f.status,
-          `"${(f.reason || "").replace(/"/g, '""')}"`,
-          f.date || f.created_at || "",
-        ].join(","),
-      ),
-    ].join("\n");
-
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute(
-      "download",
-      `fine_report_${new Date().toISOString().split("T")[0]}.csv`,
+  const filteredFines = useMemo(() => {
+    return fines.filter(
+      (f) =>
+        f.student_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        f.fine_uid?.toLowerCase().includes(searchTerm.toLowerCase()),
     );
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  }, [fines, searchTerm]);
+
+  if (loading)
+    return (
+      <Center h={400}>
+        <Loader size="lg" />
+      </Center>
+    );
 
   return (
-    <Container size="lg" py="xl">
+    <Container size="xl" py="md">
       <Stack gap="lg">
-        <Group justify="space-between" align="center">
-          <Title order={2}>Fine Management</Title>
-          {isStaff && (
-            <Button
-              leftSection={<IconPlus size={18} />}
-              onClick={() => setModalOpen(true)}
-            >
-              Impose Fine
-            </Button>
-          )}
+        <Group justify="space-between">
+          <Title order={2}>Hostel Fine Management</Title>
+          <Group>
+            {isStaff && (
+              <Button
+                leftSection={<IconDownload size={16} />}
+                variant="light"
+                onClick={handleExport}
+              >
+                Export
+              </Button>
+            )}
+            {isStaff && (
+              <Button
+                leftSection={<IconPlus size={16} />}
+                onClick={() => setModalOpen(true)}
+              >
+                Impose Fine
+              </Button>
+            )}
+          </Group>
         </Group>
 
-        {error && (
-          <Alert icon={<IconAlertCircle />} color="red" title="Error">
-            {error}
-          </Alert>
+        {isStaff && report && (
+          <Grid>
+            <Grid.Col span={{ base: 12, md: 4 }}>
+              <Card withBorder radius="md" p="md">
+                <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
+                  Total Fines
+                </Text>
+                <Title order={3}>{report.summary.total_fines}</Title>
+              </Card>
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, md: 4 }}>
+              <Card withBorder radius="md" p="md">
+                <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
+                  Total Amount
+                </Text>
+                <Title order={3}>₹{report.summary.total_amount}</Title>
+              </Card>
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, md: 4 }}>
+              <Card withBorder radius="md" p="md">
+                <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
+                  Unpaid Count
+                </Text>
+                <Title order={3} c="red">
+                  {report.summary.unpaid_fines}
+                </Title>
+              </Card>
+            </Grid.Col>
+          </Grid>
         )}
 
-        {loading ? (
-          <Center py={50}>
-            <Loader size="xl" type="dots" />
-          </Center>
-        ) : (
-          <>
-            {/* Stats cards for staff */}
-            {isStaff && (
-              <Group grow>
-                <Card withBorder p="lg">
-                  <Stack gap={4}>
-                    <Text size="sm" fw={500} c="dimmed">
-                      Total Fines
-                    </Text>
-                    <Text fw={700} size="xl">
-                      ₹{totalAmount.toLocaleString()}
-                    </Text>
-                  </Stack>
-                </Card>
-                <Card withBorder p="lg">
-                  <Stack gap={4}>
-                    <Text size="sm" fw={500} c="dimmed">
-                      Paid Amount
-                    </Text>
-                    <Text fw={700} size="xl" c="green">
-                      ₹{paidAmount.toLocaleString()}
-                    </Text>
-                  </Stack>
-                </Card>
-                <Card withBorder p="lg">
-                  <Stack gap={4}>
-                    <Text size="sm" fw={500} c="dimmed">
-                      Pending Amount
-                    </Text>
-                    <Text fw={700} size="xl" c="red">
-                      ₹{pendingAmount.toLocaleString()}
-                    </Text>
-                  </Stack>
-                </Card>
-              </Group>
-            )}
+        <Tabs defaultValue="list">
+          <Tabs.List>
+            <Tabs.Tab value="list" leftSection={<IconList size={14} />}>
+              Fine Records
+            </Tabs.Tab>
+          </Tabs.List>
 
-            {/* Filters and Report */}
-            <Group justify="space-between">
-              <Group>
-                <Select
-                  placeholder="Filter by Status"
-                  clearable
-                  data={[
-                    { value: "pending", label: "Pending" },
-                    { value: "paid", label: "Paid" },
-                    { value: "waived", label: "Waived" },
-                  ]}
-                  value={statusFilter}
-                  onChange={setStatusFilter}
-                  style={{ width: 200 }}
+          <Tabs.Panel value="list" pt="md">
+            <Paper withBorder p="md" radius="md">
+              <Stack>
+                <TextInput
+                  placeholder="Search by student or ID..."
+                  leftSection={<IconSearch size={16} />}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.currentTarget.value)}
                 />
-                {isStaff && (
-                  <Select
-                    placeholder="Filter by Category"
-                    clearable
-                    data={[
-                      { value: "hostel_rule", label: "Hostel Rule" },
-                      { value: "property_damage", label: "Property Damage" },
-                      { value: "attendance", label: "Attendance" },
-                      { value: "room_standards", label: "Room Standards" },
-                    ]}
-                    value={categoryFilter}
-                    onChange={setCategoryFilter}
-                    style={{ width: 200 }}
-                  />
-                )}
-              </Group>
-              {isStaff && (
-                <Button
-                  variant="light"
-                  color="blue"
-                  leftSection={<IconDownload size={16} />}
-                  onClick={handleGenerateReport}
-                >
-                  Generate Report
-                </Button>
-              )}
-            </Group>
+                <ScrollArea h={500}>
+                  <Table verticalSpacing="sm">
+                    <Table.Thead>
+                      <Table.Tr>
+                        <Table.Th>ID</Table.Th>
+                        {!isStudent && <Table.Th>Student</Table.Th>}
+                        <Table.Th>Category</Table.Th>
+                        <Table.Th>Amount</Table.Th>
+                        <Table.Th>Date Imposed</Table.Th>
+                        <Table.Th>Status</Table.Th>
+                        <Table.Th>Actions</Table.Th>
+                      </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>
+                      {filteredFines.map((f) => (
+                        <Table.Tr key={f.id}>
+                          <Table.Td>
+                            <Text
+                              size="xs"
+                              fw={700}
+                              variant="gradient"
+                              gradient={{ from: "blue", to: "cyan" }}
+                            >
+                              {f.fine_uid}
+                            </Text>
+                          </Table.Td>
+                          {!isStudent && (
+                            <Table.Td>
+                              <Group gap="xs">
+                                <IconUser size={14} />
+                                <div>
+                                  <Text size="sm" fw={500}>
+                                    {f.student_name}
+                                  </Text>
+                                  <Text size="xs" c="dimmed">
+                                    {f.student_roll}
+                                  </Text>
+                                </div>
+                              </Group>
+                            </Table.Td>
+                          )}
+                          <Table.Td>
+                            <Badge variant="dot" size="sm">
+                              {f.category.replace("Violation", "")}
+                            </Badge>
+                          </Table.Td>
+                          <Table.Td>
+                            <Text size="sm" fw={700} c="blue">
+                              ₹{f.amount}
+                            </Text>
+                          </Table.Td>
+                          <Table.Td>
+                            <Group gap="xs">
+                              <IconCalendar size={14} c="dimmed" />
+                              <Text size="xs">
+                                {new Date(f.imposed_date).toLocaleDateString()}
+                              </Text>
+                            </Group>
+                          </Table.Td>
+                          <Table.Td>
+                            <Badge
+                              color={
+                                f.status === "paid"
+                                  ? "green"
+                                  : f.status === "waived"
+                                    ? "gray"
+                                    : "red"
+                              }
+                              variant="filled"
+                              size="sm"
+                            >
+                              {f.status}
+                            </Badge>
+                          </Table.Td>
+                          <Table.Td>
+                            <Group gap={8}>
+                              <Tooltip label="View Details">
+                                <ActionIcon
+                                  variant="subtle"
+                                  color="blue"
+                                  onClick={() => {
+                                    setSelectedFine(f);
+                                    setDetailsOpen(true);
+                                  }}
+                                >
+                                  <IconEye size={18} />
+                                </ActionIcon>
+                              </Tooltip>
 
-            <Tabs value={activeTab} onChange={setActiveTab}>
-              <Tabs.List>
-                {isStudent && (
-                  <Tabs.Tab
-                    value="my"
-                    leftSection={<IconUser size={14} />}
-                    rightSection={
-                      <Badge size="sm">{filteredMyFines.length}</Badge>
-                    }
-                  >
-                    My Fines
-                  </Tabs.Tab>
-                )}
-                {isStaff && (
-                  <Tabs.Tab
-                    value="all"
-                    leftSection={<IconList size={14} />}
-                    rightSection={
-                      <Badge size="sm">{filteredFines.length}</Badge>
-                    }
-                  >
-                    All Fines
-                  </Tabs.Tab>
-                )}
-              </Tabs.List>
-
-              {isStudent && (
-                <Tabs.Panel value="my" pt="md">
-                  <Stack gap="md">
-                    {filteredMyFines.length === 0 ? (
-                      <Card withBorder p="xl">
-                        <Text c="dimmed" ta="center">
-                          You have no fines.
-                        </Text>
-                      </Card>
-                    ) : (
-                      filteredMyFines.map((fine) => (
-                        <FineStatusCard
-                          key={fine.id}
-                          fine={fine}
-                          showActions={false}
-                        />
-                      ))
-                    )}
-                  </Stack>
-                </Tabs.Panel>
-              )}
-
-              {isStaff && (
-                <Tabs.Panel value="all" pt="xl">
-                  <Stack gap="md">
-                    {filteredFines.length === 0 ? (
-                      <Card withBorder p="xl">
-                        <Text c="dimmed" ta="center">
-                          No fines found.
-                        </Text>
-                      </Card>
-                    ) : (
-                      filteredFines.map((fine) => (
-                        <FineStatusCard
-                          key={fine.id}
-                          fine={fine}
-                          onMarkPaid={() => handleMarkPaid(fine)}
-                          onWaive={() => handleWaiveFine(fine)}
-                          canMarkPaid={
-                            userRole === "caretaker" &&
-                            fine.status?.toLowerCase() === "pending"
-                          }
-                          canWaive={
-                            isStaff && fine.status?.toLowerCase() === "pending"
-                          }
-                          showActions
-                        />
-                      ))
-                    )}
-                  </Stack>
-                </Tabs.Panel>
-              )}
-            </Tabs>
-          </>
-        )}
-
-        {userRole === "caretaker" && (
-          <ImposeFineModal
-            opened={modalOpen}
-            onClose={() => setModalOpen(false)}
-            onSubmit={handleImposeFine}
-            loading={submitting}
-          />
-        )}
+                              {isStaff && f.status === "pending" && (
+                                <Tooltip label="Resolve / Mark Paid">
+                                  <ActionIcon
+                                    color="green"
+                                    variant="light"
+                                    onClick={() => handleMarkPaid(f.id)}
+                                  >
+                                    <IconCheck size={18} />
+                                  </ActionIcon>
+                                </Tooltip>
+                              )}
+                            </Group>
+                          </Table.Td>
+                        </Table.Tr>
+                      ))}
+                    </Table.Tbody>
+                  </Table>
+                </ScrollArea>
+              </Stack>
+            </Paper>
+          </Tabs.Panel>
+        </Tabs>
       </Stack>
+
+      <ImposeFineModal
+        opened={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSubmit={async (data) => {
+          setSubmitting(true);
+          try {
+            await imposeFine(data);
+            notifications.show({
+              title: "Success",
+              message: "Fine imposed.",
+              color: "green",
+            });
+            loadData();
+            setModalOpen(false);
+          } finally {
+            setSubmitting(false);
+          }
+        }}
+        loading={submitting}
+      />
+
+      <Modal
+        opened={detailsOpen}
+        onClose={() => setDetailsOpen(false)}
+        title={<Text fw={700}>Fine Record: {selectedFine?.fine_uid}</Text>}
+        size="lg"
+        radius="md"
+      >
+        {selectedFine && (
+          <Stack>
+            <Timeline
+              active={selectedFine.status === "paid" ? 2 : 1}
+              bulletSize={24}
+              lineWidth={2}
+            >
+              <Timeline.Item
+                bullet={<IconPlus size={12} />}
+                title="Fine Imposed"
+              >
+                <Text color="dimmed" size="xs">
+                  {new Date(selectedFine.imposed_date).toLocaleString()}
+                </Text>
+                <Text size="sm" mt={4}>
+                  By:{" "}
+                  <Text span fw={500}>
+                    {selectedFine.imposed_by_name || "Staff"}
+                  </Text>
+                </Text>
+              </Timeline.Item>
+
+              <Timeline.Item
+                bullet={<IconAlertTriangle size={12} />}
+                title="Reason & Justification"
+              >
+                <MantinePaper withBorder p="xs" mt={4} bg="gray.0">
+                  <Text size="sm" italic>
+                    {selectedFine.reason || "No justification provided."}
+                  </Text>
+                </MantinePaper>
+              </Timeline.Item>
+
+              {selectedFine.status === "paid" && (
+                <Timeline.Item
+                  bullet={<IconCheck size={12} />}
+                  title="Payment Resolved"
+                >
+                  <Text color="dimmed" size="xs">
+                    {new Date(selectedFine.paid_date).toLocaleString()}
+                  </Text>
+                  <Text size="sm" mt={4}>
+                    Status changed to <Badge color="green">Paid</Badge>
+                  </Text>
+                </Timeline.Item>
+              )}
+            </Timeline>
+
+            <Divider my="sm" />
+
+            <Group justify="space-between">
+              <div>
+                <Text size="xs" c="dimmed">
+                  Fine Amount
+                </Text>
+                <Text fw={700} size="xl" c="blue">
+                  ₹{selectedFine.amount}
+                </Text>
+              </div>
+              <Button variant="light" onClick={() => setDetailsOpen(false)}>
+                Close
+              </Button>
+            </Group>
+          </Stack>
+        )}
+      </Modal>
     </Container>
   );
 }
