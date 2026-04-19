@@ -18,9 +18,10 @@ export const hallsRoute = `${BASE_URL}/halls/`;
 export const hallDetailRoute = (hallId) => `${BASE_URL}/halls/${hallId}/`;
 
 // Hall Room Routes
-export const hallRoomsRoute = (hallId) => `${BASE_URL}/halls/${hallId}/rooms/`;
+export const hallRoomsRoute = (hallId) =>
+  `${BASE_URL}/hostels/${hallId}/rooms/`;
 export const hallRoomDetailRoute = (hallId, roomId) =>
-  `${BASE_URL}/halls/${hallId}/rooms/${roomId}/`;
+  `${BASE_URL}/hostels/${hallId}/rooms/${roomId}/`;
 
 // Super Admin Routes
 export const assignWardenRoute = `${BASE_URL}/admin/assign-warden/`;

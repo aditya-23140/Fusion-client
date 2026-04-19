@@ -29,15 +29,19 @@ import {
   IconLayoutDashboard,
   IconListCheck,
   IconHome,
+  IconPlus,
+  IconCheck,
+  IconX,
+  IconBuildingCommunity,
+  IconAlertCircle,
 } from "@tabler/icons-react";
 
 // Components
 import ApplicationWindowBanner from "./ApplicationWindowBanner";
 import AccommodationRequestForm from "./AccommodationRequestForm";
-import AllotmentDashboard from "./AllotmentDashboard";
-import BulkAllotmentPanel from "./BulkAllotmentPanel";
 import CapacityHeatmap from "./CapacityHeatmap";
 import AllotmentListView from "./AllotmentListView";
+import RoomChangeRequestForm from "../RoomChangeRequestForm";
 
 // API
 import * as api from "../../api";
@@ -54,16 +58,18 @@ function AccommodationAllotment({ userRole }) {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [windows, setWindows] = useState([]);
-  const [requests, setRequests] = useState([]);
   const [capacityData, setCapacityData] = useState([]);
   const [myAllotment, setMyAllotment] = useState(null);
-  const [selectedRequestIds, setSelectedRequestIds] = useState([]);
+  const [roomChanges, setRoomChanges] = useState([]);
+  const [availableRooms, setAvailableRooms] = useState([]);
+  const [changeModalOpen, setChangeModalOpen] = useState(false);
 
-  const isSuperAdmin = userRole === "superadmin" || userRole === "super_admin";
-  const isCaretaker = userRole === "caretaker";
-  const isWarden = userRole === "warden";
+  const role = (userRole || "").toLowerCase();
+  const isSuperAdmin = role === "superadmin" || role === "super_admin";
+  const isCaretaker = role === "caretaker";
+  const isWarden = role === "warden";
   const isStaff = isWarden || isCaretaker;
-  const isStudent = userRole === "student" || (!isSuperAdmin && !isStaff);
+  const isStudent = role === "student" || (!isSuperAdmin && !isStaff);
 
   const loadInitialData = async () => {
     setLoading(true);
@@ -81,21 +87,13 @@ function AccommodationAllotment({ userRole }) {
       }
 
       if (isSuperAdmin || isStaff) {
-        const fetchTasks = [api.fetchRoomCapacityDashboard()];
-
-        // Only caretaker sees pending requests now
-        if (isCaretaker) {
-          fetchTasks.push(
-            api.fetchAccommodationRequests({ status: "Pending" }),
-          );
-        }
-
-        const reports = await Promise.all(fetchTasks);
-        setCapacityData(reports[0]);
-        if (isCaretaker && reports[1]) {
-          setRequests(reports[1].results || reports[1]);
-        }
+        const reports = await api.fetchRoomCapacityDashboard();
+        setCapacityData(reports);
       }
+
+      // Fetch Room Changes for all relevant roles & load Halls for student modal
+      const changes = await api.fetchRoomChanges().catch(() => []);
+      setRoomChanges(Array.isArray(changes) ? changes : []);
     } catch (error) {
       notifications.show({
         title: "Error",
@@ -133,23 +131,35 @@ function AccommodationAllotment({ userRole }) {
     }
   };
 
-  const handleBulkAllot = async () => {
-    setActionLoading(true);
+  // --- ROOM CHANGE HANDLERS ---
+  const handleRequestRoomChange = async (formData) => {
     try {
-      const results = await api.performBulkAllotment(selectedRequestIds);
-      const successCount = results.success.length;
-      const failedCount = results.failed.length;
+      setActionLoading(true);
+      const payload = {
+        requested_room: parseInt(formData.requested_room, 10),
+        reason: formData.reason,
+      };
+      await api.requestRoomChange(payload);
+
       notifications.show({
-        title: "Allotment Complete",
-        message: `${successCount} successful, ${failedCount} failed.`,
-        color: successCount > 0 ? "green" : "red",
+        title: "Success",
+        message: "Room change request submitted successfully",
+        color: "green",
       });
-      setSelectedRequestIds([]);
+      setChangeModalOpen(false);
       loadInitialData();
-    } catch (error) {
+    } catch (err) {
+      const errorMsg =
+        err.response?.data?.detail ||
+        err.response?.data?.error ||
+        (typeof err.response?.data === "object"
+          ? JSON.stringify(err.response?.data)
+          : null) ||
+        err.message ||
+        "Failed to request room change";
       notifications.show({
         title: "Error",
-        message: "Bulk allotment failed",
+        message: errorMsg,
         color: "red",
       });
     } finally {
@@ -157,19 +167,106 @@ function AccommodationAllotment({ userRole }) {
     }
   };
 
-  const handleSelectRequest = (id) => {
-    setSelectedRequestIds((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
-    );
-  };
+  const handleApproveChange = async (changeId) => {
+    try {
+      setActionLoading(true);
+      await api.approveRoomChange(changeId, { approve: true, remarks: "" });
 
-  const handleSelectAllRequests = () => {
-    if (selectedRequestIds.length === requests.length) {
-      setSelectedRequestIds([]);
-    } else {
-      setSelectedRequestIds(requests.map((r) => r.id));
+      notifications.show({
+        title: "Success",
+        message: "Room change approved",
+        color: "green",
+      });
+      loadInitialData();
+    } catch (err) {
+      const errorMsg =
+        err.response?.data?.detail ||
+        err.response?.data?.error ||
+        err.message ||
+        "Failed to approve room change";
+      notifications.show({
+        title: "Error",
+        message: errorMsg,
+        color: "red",
+      });
+    } finally {
+      setActionLoading(false);
     }
   };
+
+  const handleRejectChange = async (changeId) => {
+    const reason = window.prompt("Please provide a reason for rejection:");
+    if (!reason || reason.trim().length < 5) {
+      notifications.show({
+        title: "Error",
+        message: "Rejection reason must be at least 5 characters.",
+        color: "red",
+      });
+      return;
+    }
+    try {
+      setActionLoading(true);
+      await api.rejectRoomChange(changeId, {
+        approve: false,
+        rejection_reason: reason.trim(),
+        remarks: reason.trim(),
+      });
+
+      notifications.show({
+        title: "Success",
+        message: "Room change rejected",
+        color: "green",
+      });
+      loadInitialData();
+    } catch (err) {
+      const errorMsg =
+        err.response?.data?.detail ||
+        err.response?.data?.error ||
+        err.message ||
+        "Failed to reject room change";
+      notifications.show({
+        title: "Error",
+        message: errorMsg,
+        color: "red",
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Fetch available rooms specifically when student attempts room change
+  useEffect(() => {
+    if (changeModalOpen && myAllotment) {
+      const loadRoomsForChange = async () => {
+        try {
+          const hallId =
+            myAllotment.hostel || myAllotment.hostel_id || myAllotment.hall?.id;
+          if (!hallId) return;
+
+          const roomsData = await api.fetchRoomsInHall(hallId);
+          if (Array.isArray(roomsData)) {
+            const flattenedRooms = roomsData
+              .filter(
+                (r) =>
+                  r.current_occupancy < r.capacity &&
+                  String(r.room_number) !== String(myAllotment.room_number),
+              )
+              .map((r) => ({
+                id: r.id,
+                number: r.room_number,
+                capacity: r.capacity,
+                current_occupancy: r.current_occupancy,
+                hall: { id: hallId, name: myAllotment.hostel_name },
+              }));
+            setAvailableRooms(flattenedRooms);
+          }
+        } catch (error) {
+          console.error("Error loading rooms:", error);
+        }
+      };
+      loadRoomsForChange();
+    }
+  }, [changeModalOpen, myAllotment]);
 
   const activeWindow = windows.find((w) => w.is_active);
 
@@ -250,19 +347,18 @@ function AccommodationAllotment({ userRole }) {
                 >
                   Capacity Dashboard
                 </Tabs.Tab>
-                {isCaretaker && (
-                  <Tabs.Tab
-                    value="requests"
-                    leftSection={<IconListCheck size={16} />}
-                  >
-                    Pending Requests
-                  </Tabs.Tab>
-                )}
+
                 <Tabs.Tab
                   value="allotments"
                   leftSection={<IconUserCog size={16} />}
                 >
                   Allotment List
+                </Tabs.Tab>
+                <Tabs.Tab
+                  value="room_changes"
+                  leftSection={<IconBuildingCommunity size={16} />}
+                >
+                  Room Changes
                 </Tabs.Tab>
               </Tabs.List>
 
@@ -271,31 +367,132 @@ function AccommodationAllotment({ userRole }) {
                   <CapacityHeatmap capacityData={capacityData} />
                 </Tabs.Panel>
 
-                {isCaretaker && (
-                  <Tabs.Panel value="requests">
-                    <Box>
-                      <ApplicationWindowBanner
-                        window={activeWindow}
-                        isStudent={false}
-                      />
-                      <AllotmentDashboard
-                        requests={requests}
-                        selectedIds={selectedRequestIds}
-                        onSelect={handleSelectRequest}
-                        onSelectAll={handleSelectAllRequests}
-                      />
-                      <BulkAllotmentPanel
-                        selectedCount={selectedRequestIds.length}
-                        onBulkAllot={handleBulkAllot}
-                        onClear={() => setSelectedRequestIds([])}
-                        loading={actionLoading}
-                      />
-                    </Box>
-                  </Tabs.Panel>
-                )}
-
                 <Tabs.Panel value="allotments">
                   <AllotmentListView isSuperAdmin={false} />
+                </Tabs.Panel>
+
+                <Tabs.Panel value="room_changes">
+                  <Stack>
+                    <Title order={3}>Room Change Requests</Title>
+                    <Alert
+                      icon={<IconListCheck />}
+                      color="blue"
+                      title="Manage Room Changes"
+                    >
+                      Review and approve/reject student room change requests.
+                      Each change must be reviewed and approved before updating
+                      allocations.
+                    </Alert>
+
+                    {roomChanges.length > 0 ? (
+                      <Card withBorder>
+                        <table
+                          style={{ width: "100%", borderCollapse: "collapse" }}
+                        >
+                          <thead>
+                            <tr
+                              style={{
+                                borderBottom: "1px solid #eee",
+                                textAlign: "left",
+                              }}
+                            >
+                              <th style={{ padding: "10px" }}>Student</th>
+                              <th style={{ padding: "10px" }}>From Room</th>
+                              <th style={{ padding: "10px" }}>To Room</th>
+                              <th style={{ padding: "10px" }}>Reason</th>
+                              <th style={{ padding: "10px" }}>Status</th>
+                              <th style={{ padding: "10px" }}>Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {roomChanges.map((change) => (
+                              <tr
+                                key={change.id}
+                                style={{ borderBottom: "1px solid #f9f9f9" }}
+                              >
+                                <td style={{ padding: "10px" }}>
+                                  {change.student_name}
+                                </td>
+                                <td style={{ padding: "10px" }}>
+                                  {change.current_room_number}
+                                </td>
+                                <td style={{ padding: "10px" }}>
+                                  {change.requested_room_number}
+                                </td>
+                                <td style={{ padding: "10px" }}>
+                                  <Text size="sm" c="dimmed">
+                                    {change.reason?.length > 30
+                                      ? `${change.reason.substring(0, 30)}...`
+                                      : change.reason}
+                                  </Text>
+                                </td>
+                                <td style={{ padding: "10px" }}>
+                                  <Badge
+                                    color={
+                                      change.status === "requested"
+                                        ? "yellow"
+                                        : change.status === "approved_warden"
+                                          ? "blue"
+                                          : change.status === "completed"
+                                            ? "green"
+                                            : change.status === "rejected"
+                                              ? "red"
+                                              : "gray"
+                                    }
+                                  >
+                                    {change.status}
+                                  </Badge>
+                                </td>
+                                <td style={{ padding: "10px" }}>
+                                  {(change.status === "requested" ||
+                                    change.status === "approved_warden") && (
+                                    <Group gap="xs">
+                                      <button
+                                        style={{
+                                          background: "none",
+                                          border: "none",
+                                          cursor: "pointer",
+                                          color: "green",
+                                        }}
+                                        title={
+                                          change.status === "requested"
+                                            ? "Approve (Warden Step)"
+                                            : "Approve (Caretaker Step)"
+                                        }
+                                        onClick={() =>
+                                          handleApproveChange(change.id)
+                                        }
+                                        disabled={actionLoading}
+                                      >
+                                        <IconCheck size={18} />
+                                      </button>
+                                      <button
+                                        style={{
+                                          background: "none",
+                                          border: "none",
+                                          cursor: "pointer",
+                                          color: "red",
+                                        }}
+                                        title="Reject"
+                                        onClick={() =>
+                                          handleRejectChange(change.id)
+                                        }
+                                        disabled={actionLoading}
+                                      >
+                                        <IconX size={18} />
+                                      </button>
+                                    </Group>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </Card>
+                    ) : (
+                      <Text c="dimmed">No room changes found.</Text>
+                    )}
+                  </Stack>
                 </Tabs.Panel>
               </Box>
             </Tabs>
@@ -480,6 +677,123 @@ function AccommodationAllotment({ userRole }) {
                     />
                   )}
                 </>
+              )}
+
+              {/* STUDENT ROOM CHANGE HISTORY (Only visible if they have an active allotment) */}
+              {myAllotment && (
+                <Box mt="xl">
+                  <Group justify="space-between" mb="md">
+                    <Title order={3}>Room Change Requests</Title>
+                    <button
+                      onClick={() => setChangeModalOpen(true)}
+                      style={{
+                        padding: "8px 16px",
+                        backgroundColor: "var(--mantine-color-blue-filled)",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "4px",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                      }}
+                    >
+                      <IconPlus size={16} /> Request Room Change
+                    </button>
+                  </Group>
+                  <Alert
+                    icon={<IconAlertCircle size={16} />}
+                    color="blue"
+                    title="Room Change Process"
+                    mb="md"
+                  >
+                    Submit a request to move to a different room. Your request
+                    must be approved by both the Warden and Caretaker before
+                    taking effect.
+                  </Alert>
+
+                  {roomChanges.length > 0 ? (
+                    <Card withBorder>
+                      <table
+                        style={{ width: "100%", borderCollapse: "collapse" }}
+                      >
+                        <thead>
+                          <tr
+                            style={{
+                              borderBottom: "1px solid #eee",
+                              textAlign: "left",
+                            }}
+                          >
+                            <th style={{ padding: "10px" }}>From Room</th>
+                            <th style={{ padding: "10px" }}>To Room</th>
+                            <th style={{ padding: "10px" }}>Reason</th>
+                            <th style={{ padding: "10px" }}>Status</th>
+                            <th style={{ padding: "10px" }}>Date Requested</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {roomChanges.map((change) => (
+                            <tr
+                              key={change.id}
+                              style={{ borderBottom: "1px solid #f9f9f9" }}
+                            >
+                              <td style={{ padding: "10px" }}>
+                                {change.current_room_number}
+                              </td>
+                              <td style={{ padding: "10px" }}>
+                                {change.requested_room_number}
+                              </td>
+                              <td style={{ padding: "10px" }}>
+                                {change.reason}
+                              </td>
+                              <td style={{ padding: "10px" }}>
+                                <Badge
+                                  color={
+                                    change.status === "requested"
+                                      ? "yellow"
+                                      : change.status === "approved_warden"
+                                        ? "blue"
+                                        : change.status === "completed"
+                                          ? "green"
+                                          : change.status === "rejected"
+                                            ? "red"
+                                            : "gray"
+                                  }
+                                >
+                                  {change.status === "requested"
+                                    ? "Pending"
+                                    : change.status === "approved_warden"
+                                      ? "Warden Approved"
+                                      : change.status === "completed"
+                                        ? "Completed"
+                                        : change.status === "rejected"
+                                          ? "Rejected"
+                                          : change.status}
+                                </Badge>
+                              </td>
+                              <td style={{ padding: "10px" }}>
+                                {change.requested_date}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </Card>
+                  ) : (
+                    <Text c="dimmed">No room change requests found.</Text>
+                  )}
+                </Box>
+              )}
+
+              {/* STUDENT ROOM CHANGE MODAL (Only rendered if they have an active allotment) */}
+              {isStudent && myAllotment && (
+                <RoomChangeRequestForm
+                  opened={changeModalOpen}
+                  onClose={() => setChangeModalOpen(false)}
+                  onSubmit={handleRequestRoomChange}
+                  loading={actionLoading}
+                  availableRooms={availableRooms}
+                />
               )}
             </Box>
           )}

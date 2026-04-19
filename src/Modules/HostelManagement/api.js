@@ -325,12 +325,12 @@ export const fetchRoomChangeDetail = async (changeId) => {
 };
 
 export const approveRoomChange = async (changeId, data) => {
-  const response = await apiClient.post(roomChangeApproveRoute(changeId), data);
+  const response = await apiClient.put(roomChangeApproveRoute(changeId), data);
   return response.data;
 };
 
 export const rejectRoomChange = async (changeId, data) => {
-  const response = await apiClient.post(roomChangeRejectRoute(changeId), data);
+  const response = await apiClient.put(roomChangeRejectRoute(changeId), data);
   return response.data;
 };
 

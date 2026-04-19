@@ -345,19 +345,32 @@ export default function RoomAllocationManagement() {
   const handleRequestRoomChange = async (formData) => {
     try {
       setSubmitting(true);
-      await requestRoomChange(formData);
+      // Transform form data: backend only needs requested_room (ID) and reason
+      const payload = {
+        requested_room: parseInt(formData.requested_room, 10),
+        reason: formData.reason,
+      };
+      await requestRoomChange(payload);
 
       notifications.show({
         title: "Success",
-        message: "Room change request submitted",
+        message: "Room change request submitted successfully",
         color: "green",
       });
       setChangeModalOpen(false);
       loadData();
     } catch (err) {
+      const errorMsg =
+        err.response?.data?.detail ||
+        err.response?.data?.error ||
+        (typeof err.response?.data === "object"
+          ? JSON.stringify(err.response?.data)
+          : null) ||
+        err.message ||
+        "Failed to request room change";
       notifications.show({
         title: "Error",
-        message: err.message || "Failed to request room change",
+        message: errorMsg,
         color: "red",
       });
     } finally {
@@ -365,11 +378,11 @@ export default function RoomAllocationManagement() {
     }
   };
 
-  // Handler: Approve Room Change (Caretaker only)
+  // Handler: Approve Room Change (Caretaker/Warden)
   const handleApproveChange = async (changeId) => {
     try {
       setSubmitting(true);
-      await approveRoomChange(changeId, { remarks: "" });
+      await approveRoomChange(changeId, { approve: true, remarks: "" });
 
       notifications.show({
         title: "Success",
@@ -378,9 +391,14 @@ export default function RoomAllocationManagement() {
       });
       loadData();
     } catch (err) {
+      const errorMsg =
+        err.response?.data?.detail ||
+        err.response?.data?.error ||
+        err.message ||
+        "Failed to approve room change";
       notifications.show({
         title: "Error",
-        message: err.message || "Failed to approve room change",
+        message: errorMsg,
         color: "red",
       });
     } finally {
@@ -388,11 +406,24 @@ export default function RoomAllocationManagement() {
     }
   };
 
-  // Handler: Reject Room Change (Caretaker only)
+  // Handler: Reject Room Change (Caretaker/Warden)
   const handleRejectChange = async (changeId) => {
+    const reason = window.prompt("Please provide a reason for rejection:");
+    if (!reason || reason.trim().length < 5) {
+      notifications.show({
+        title: "Error",
+        message: "Rejection reason must be at least 5 characters.",
+        color: "red",
+      });
+      return;
+    }
     try {
       setSubmitting(true);
-      await rejectRoomChange(changeId, { remarks: "Rejected by caretaker" });
+      await rejectRoomChange(changeId, {
+        approve: false,
+        rejection_reason: reason.trim(),
+        remarks: reason.trim(),
+      });
 
       notifications.show({
         title: "Success",
@@ -401,9 +432,14 @@ export default function RoomAllocationManagement() {
       });
       loadData();
     } catch (err) {
+      const errorMsg =
+        err.response?.data?.detail ||
+        err.response?.data?.error ||
+        err.message ||
+        "Failed to reject room change";
       notifications.show({
         title: "Error",
-        message: err.message || "Failed to reject room change",
+        message: errorMsg,
         color: "red",
       });
     } finally {
@@ -551,6 +587,15 @@ export default function RoomAllocationManagement() {
         { value: "1", label: "Individual Allocation" },
         { value: "2", label: "Room Changes" },
         { value: "3", label: "View Allocations" },
+        { value: "4", label: "Room Vacations" },
+        { value: "5", label: "Extended Stays" },
+      ];
+    }
+
+    if (userRole === "warden") {
+      return [
+        { value: "2", label: "Room Changes" },
+        { value: "1", label: "View Allocations" },
         { value: "4", label: "Room Vacations" },
         { value: "5", label: "Extended Stays" },
       ];
@@ -716,8 +761,8 @@ export default function RoomAllocationManagement() {
             </Stack>
           </Tabs.Panel>
         )}
-        {/* CARETAKER: Room Changes */}
-        {userRole === "caretaker" && (
+        {/* STAFF: Room Changes */}
+        {(userRole === "caretaker" || userRole === "warden") && (
           <Tabs.Panel value="2" pt="md">
             <Stack>
               <Title order={3}>Room Change Requests</Title>
@@ -752,16 +797,39 @@ export default function RoomAllocationManagement() {
                           <Table.Td>{change.requested_room_number}</Table.Td>
                           <Table.Td>
                             <Text size="sm" c="dimmed">
-                              {change.reason.substring(0, 30)}...
+                              {change.reason?.length > 30
+                                ? `${change.reason.substring(0, 30)}...`
+                                : change.reason}
                             </Text>
                           </Table.Td>
                           <Table.Td>
-                            <Badge>{change.status}</Badge>
+                            <Badge
+                              color={
+                                change.status === "requested"
+                                  ? "yellow"
+                                  : change.status === "approved_warden"
+                                    ? "blue"
+                                    : change.status === "completed"
+                                      ? "green"
+                                      : change.status === "rejected"
+                                        ? "red"
+                                        : "gray"
+                              }
+                            >
+                              {change.status}
+                            </Badge>
                           </Table.Td>
                           <Table.Td>
-                            {change.status === "requested" && (
+                            {(change.status === "requested" ||
+                              change.status === "approved_warden") && (
                               <Group gap="xs">
-                                <Tooltip label="Approve">
+                                <Tooltip
+                                  label={
+                                    change.status === "requested"
+                                      ? "Approve (Warden Step)"
+                                      : "Approve (Caretaker Step)"
+                                  }
+                                >
                                   <ActionIcon
                                     color="green"
                                     variant="light"
@@ -847,7 +915,29 @@ export default function RoomAllocationManagement() {
                           <Table.Td>{change.requested_room_number}</Table.Td>
                           <Table.Td>{change.reason}</Table.Td>
                           <Table.Td>
-                            <Badge>{change.status}</Badge>
+                            <Badge
+                              color={
+                                change.status === "requested"
+                                  ? "yellow"
+                                  : change.status === "approved_warden"
+                                    ? "blue"
+                                    : change.status === "completed"
+                                      ? "green"
+                                      : change.status === "rejected"
+                                        ? "red"
+                                        : "gray"
+                              }
+                            >
+                              {change.status === "requested"
+                                ? "Pending"
+                                : change.status === "approved_warden"
+                                  ? "Warden Approved"
+                                  : change.status === "completed"
+                                    ? "Completed"
+                                    : change.status === "rejected"
+                                      ? "Rejected"
+                                      : change.status}
+                            </Badge>
                           </Table.Td>
                           <Table.Td>{change.requested_date}</Table.Td>
                         </Table.Tr>
@@ -870,7 +960,9 @@ export default function RoomAllocationManagement() {
               ? "1"
               : userRole === "caretaker"
                 ? "3"
-                : "1"
+                : userRole === "warden"
+                  ? "1"
+                  : "1"
           }
           pt="md"
         >
@@ -1045,8 +1137,8 @@ export default function RoomAllocationManagement() {
             </Stack>
           </Tabs.Panel>
         )}
-        {/* CARETAKER: Room Vacations */}
-        {userRole === "caretaker" && (
+        {/* STAFF: Room Vacations */}
+        {(userRole === "caretaker" || userRole === "warden") && (
           <Tabs.Panel value="4" pt="md">
             <Stack>
               <Title order={3}>Room Vacations Verification</Title>
@@ -1081,7 +1173,8 @@ export default function RoomAllocationManagement() {
                               </Button>
                             )}
                             {v.status === "verified" &&
-                              userRole === "caretaker" && (
+                              (userRole === "caretaker" ||
+                                userRole === "warden") && (
                                 <Button
                                   size="xs"
                                   color="green"
@@ -1100,8 +1193,8 @@ export default function RoomAllocationManagement() {
             </Stack>
           </Tabs.Panel>
         )}
-        {/* CARETAKER: Extended Stays */}
-        {userRole === "caretaker" && (
+        {/* STAFF: Extended Stays */}
+        {(userRole === "caretaker" || userRole === "warden") && (
           <Tabs.Panel value="5" pt="md">
             <Stack>
               <Title order={3}>Extended Stays Approval</Title>

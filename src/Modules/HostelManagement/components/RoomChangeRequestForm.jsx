@@ -24,18 +24,15 @@ export default function RoomChangeRequestForm({
   onClose,
   onSubmit,
   loading = false,
-  halls = [],
   availableRooms = [],
   currentRoom = null,
 }) {
   const form = useForm({
     initialValues: {
-      hall: "",
       requested_room: "",
       reason: "",
     },
     validate: {
-      hall: (value) => (value ? null : "Hall is required"),
       requested_room: (value) => (value ? null : "Room is required"),
       reason: (value) =>
         value && value.length >= 10
@@ -52,16 +49,13 @@ export default function RoomChangeRequestForm({
       console.error("Form submission error:", error);
     }
   };
-  const selectedHall = form.values.hall;
   const hallRooms = Array.isArray(availableRooms)
-    ? availableRooms
-        .filter((r) => r && r.hall && r.hall.id === parseInt(selectedHall, 10))
-        .sort((a, b) => {
-          // Extract numeric part from room number for proper numerical sorting
-          const numA = parseInt(a.number?.match(/\d+/)?.[0] || 0, 10);
-          const numB = parseInt(b.number?.match(/\d+/)?.[0] || 0, 10);
-          return numA - numB;
-        })
+    ? [...availableRooms].sort((a, b) => {
+        // Extract numeric part from room number for proper numerical sorting
+        const numA = parseInt(a.number?.match(/\d+/)?.[0] || 0, 10);
+        const numB = parseInt(b.number?.match(/\d+/)?.[0] || 0, 10);
+        return numA - numB;
+      })
     : [];
 
   return (
@@ -83,61 +77,35 @@ export default function RoomChangeRequestForm({
           )}
 
           <Select
-            label="New Hall"
-            placeholder="Select a hall"
+            label="New Room"
+            placeholder="Select a room in your current hall"
             data={
-              Array.isArray(halls)
-                ? halls
-                    .filter((h) => h && h.id && h.name)
-                    .map((h) => ({
-                      value: String(h.id),
-                      label: String(h.name || "Unknown Hall"),
+              Array.isArray(hallRooms)
+                ? hallRooms
+                    .filter((r) => r && r.id && r.number)
+                    .map((r) => ({
+                      value: String(r.id),
+                      label: `Room ${String(r.number || "?")} (${String(r.current_occupancy || 0)}/${String(r.capacity || "?")})`,
                     }))
                 : []
             }
             searchable
-            clearable
-            value={form.values.hall}
-            onChange={(value) => form.setFieldValue("hall", value)}
-            error={form.errors.hall}
+            disabled={hallRooms.length === 0}
+            value={form.values.requested_room}
+            onChange={(value) => form.setFieldValue("requested_room", value)}
+            error={form.errors.requested_room}
           />
-
-          {selectedHall && (
-            <>
-              <Select
-                label="New Room"
-                placeholder="Select a room"
-                data={
-                  Array.isArray(hallRooms)
-                    ? hallRooms
-                        .filter((r) => r && r.id && r.number)
-                        .map((r) => ({
-                          value: String(r.id),
-                          label: `Room ${String(r.number || "?")} (${String(r.current_occupancy || 0)}/${String(r.capacity || "?")})`,
-                        }))
-                    : []
-                }
-                searchable
-                disabled={hallRooms.length === 0}
-                value={form.values.requested_room}
-                onChange={(value) =>
-                  form.setFieldValue("requested_room", value)
-                }
-                error={form.errors.requested_room}
-              />
-              {hallRooms.length === 0 && (
-                <Alert
-                  icon={<IconAlertCircle />}
-                  color="yellow"
-                  title="No Rooms Available"
-                >
-                  <Text size="sm">
-                    No available rooms found for the selected hall. Please
-                    select a different hall or contact the caretaker.
-                  </Text>
-                </Alert>
-              )}
-            </>
+          {hallRooms.length === 0 && (
+            <Alert
+              icon={<IconAlertCircle />}
+              color="yellow"
+              title="No Rooms Available"
+            >
+              <Text size="sm">
+                No available alternative rooms found in your current hall.
+                Please contact the caretaker.
+              </Text>
+            </Alert>
           )}
           <Textarea
             label="Reason for Change"
@@ -168,12 +136,6 @@ RoomChangeRequestForm.propTypes = {
   onClose: PropTypes.func.isRequired,
   onSubmit: PropTypes.func.isRequired,
   loading: PropTypes.bool,
-  halls: PropTypes.arrayOf(
-    PropTypes.shape({
-      id: PropTypes.number,
-      name: PropTypes.string,
-    }),
-  ),
   availableRooms: PropTypes.arrayOf(
     PropTypes.shape({
       id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
