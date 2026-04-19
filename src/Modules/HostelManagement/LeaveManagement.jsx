@@ -49,7 +49,9 @@ export default function LeaveManagement() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
-  const userRole = useSelector((state) => state.user.role);
+  const userRole = (
+    useSelector((state) => state.user.role) || ""
+  ).toLowerCase();
   const isStaff = userRole === "caretaker" || userRole === "warden";
   const isStudent = userRole === "student";
 
@@ -202,19 +204,21 @@ export default function LeaveManagement() {
       "End Date",
       "Reason",
       "Status",
-      "Remarks",
+      "Decision Remarks",
+      "Decided By",
     ];
     const csvContent = [
       headers.join(","),
       ...filteredLeaves.map((l) =>
         [
           l.id,
-          `"${l.student_id || l.student?.id || ""}"`,
+          `"${l.student_name || l.student?.id || ""}"`,
           l.start_date,
           l.end_date,
           `"${(l.reason || "").replace(/"/g, '""')}"`,
           l.status,
-          `"${(l.remarks || "").replace(/"/g, '""')}"`,
+          `"${(l.decision_remarks || "").replace(/"/g, '""')}"`,
+          `"${l.decided_by_name || ""}"`,
         ].join(","),
       ),
     ].join("\n");

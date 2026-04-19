@@ -5,14 +5,15 @@
 
 import React from "react";
 import PropTypes from "prop-types";
-import { Badge, ActionIcon, Group, Tooltip } from "@mantine/core";
-import { IconCheck, IconX } from "@tabler/icons-react";
+import { Badge, ActionIcon, Group, Tooltip, Anchor } from "@mantine/core";
+import { IconCheck, IconX, IconFileText } from "@tabler/icons-react";
 import DataTable from "./DataTable";
 
 const statusColors = {
   pending: "yellow",
-  Approved: "green",
-  Rejected: "red",
+  approved: "green",
+  rejected: "red",
+  cancelled: "gray",
 };
 
 function LeavesTable({
@@ -27,19 +28,39 @@ function LeavesTable({
     {
       key: "student_name",
       label: "Student",
-      render: (_, row) => row.student?.id?.user?.username || "-",
+      render: (value, row) => value || row.student?.id?.user?.username || "-",
     },
     { key: "start_date", label: "Start Date" },
     { key: "end_date", label: "End Date" },
     { key: "reason", label: "Reason" },
-    { key: "address_during_leave", label: "Address" },
-    { key: "phone", label: "Phone" },
+    {
+      key: "documents",
+      label: "Docs",
+      render: (value) =>
+        value ? (
+          <Tooltip label="View Documents">
+            <Anchor href={value} target="_blank" underline="always">
+              <IconFileText size={18} />
+            </Anchor>
+          </Tooltip>
+        ) : (
+          "-"
+        ),
+    },
     {
       key: "status",
       label: "Status",
-      render: (value) => (
-        <Badge color={statusColors[value] || "gray"}>{value}</Badge>
-      ),
+      render: (value) => {
+        const normalized = (value || "").toLowerCase();
+        return (
+          <Badge color={statusColors[normalized] || "gray"}>{value}</Badge>
+        );
+      },
+    },
+    {
+      key: "decision_remarks",
+      label: "Remarks",
+      render: (value) => value || "-",
     },
   ];
 
@@ -47,8 +68,9 @@ function LeavesTable({
     columns.push({
       key: "actions",
       label: "Actions",
-      render: (_, row) =>
-        row.status === "pending" ? (
+      render: (_, row) => {
+        const isPending = (row.status || "").toLowerCase() === "pending";
+        return isPending ? (
           <Group gap="xs">
             <Tooltip label="Approve">
               <ActionIcon
@@ -69,7 +91,8 @@ function LeavesTable({
               </ActionIcon>
             </Tooltip>
           </Group>
-        ) : null,
+        ) : null;
+      },
     });
   }
 
@@ -91,6 +114,7 @@ LeavesTable.propTypes = {
       end_date: PropTypes.string,
       reason: PropTypes.string,
       status: PropTypes.string,
+      documents: PropTypes.string,
     }),
   ).isRequired,
   loading: PropTypes.bool.isRequired,

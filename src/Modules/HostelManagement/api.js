@@ -122,9 +122,15 @@ apiClient.interceptors.response.use(
 
 export const submitLeave = async (leaveData) => {
   const isFormData = leaveData instanceof FormData;
-  const response = await apiClient.post(leavesRoute, leaveData, {
-    headers: isFormData ? { "Content-Type": "multipart/form-data" } : {},
-  });
+  const config = {};
+
+  if (isFormData) {
+    // We NEED the browser to set the boundary, so we force Axios
+    // to NOT set the Content-Type to application/json by default.
+    config.headers = { "Content-Type": "multipart/form-data" };
+  }
+
+  const response = await apiClient.post(leavesRoute, leaveData, config);
   return response.data;
 };
 
@@ -152,23 +158,30 @@ export const fetchLeaveDetail = async (leaveId) => {
   return response.data;
 };
 
-export const approveLeave = async (leaveId, data) => {
-  const response = await apiClient.post(leaveApproveRoute(leaveId), data);
+export const approveLeave = async (leaveId, decisionRemarks) => {
+  const response = await apiClient.patch(leaveApproveRoute(leaveId), {
+    status: "Approved",
+    decision_remarks: decisionRemarks,
+  });
   return response.data;
 };
 
-export const rejectLeave = async (leaveId, data) => {
-  const response = await apiClient.post(leaveRejectRoute(leaveId), data);
+export const rejectLeave = async (leaveId, decisionRemarks) => {
+  const response = await apiClient.patch(leaveRejectRoute(leaveId), {
+    status: "Rejected",
+    decision_remarks: decisionRemarks,
+  });
   return response.data;
 };
 
-export const updateLeaveStatus = async (leaveId, status, data) => {
-  // Route to update leave status (approve/reject based on status)
-  if (status === "approved") {
-    return approveLeave(leaveId, data);
+export const updateLeaveStatus = async ({ leave_id, status, remarks }) => {
+  // Normalize status and call appropriate method
+  const normalizedStatus = status.toLowerCase();
+  if (normalizedStatus === "approved") {
+    return approveLeave(leave_id, remarks);
   }
-  if (status === "rejected") {
-    return rejectLeave(leaveId, data);
+  if (normalizedStatus === "rejected") {
+    return rejectLeave(leave_id, remarks);
   }
   throw new Error("Invalid leave status");
 };
@@ -582,9 +595,11 @@ export const fetchRoomsInHall = async (hallId) => {
  * @param {number|string} hallId - The ID of the hall
  * @returns {Promise<Array>} Array of attendance records for the hall
  */
-export const fetchAttendance = async (hallId) => {
+export const fetchAttendance = async (hallId, date) => {
   try {
-    const response = await apiClient.get(listAttendanceRoute(hallId));
+    const params = { hall_id: hallId };
+    if (date) params.date = date;
+    const response = await apiClient.get(listAttendanceRoute, { params });
     return response.data;
   } catch (error) {
     console.error(`Failed to fetch attendance for hall ${hallId}:`, error);

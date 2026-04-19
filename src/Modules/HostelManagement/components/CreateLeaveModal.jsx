@@ -1,14 +1,13 @@
 /**
  * CreateLeaveModal Component (UC-001)
  * Modal form for creating a new leave request
- * Supports: dates, reason, address, phone, file upload for supporting docs
+ * Supports: dates, reason, and mandatory file upload for supporting docs
  */
 
 import React, { useState } from "react";
 import PropTypes from "prop-types";
 import {
   Modal,
-  TextInput,
   Textarea,
   Button,
   Stack,
@@ -26,10 +25,8 @@ function CreateLeaveModal({ opened, onClose, onSubmit, loading }) {
     start_date: null,
     end_date: null,
     reason: "",
-    address_during_leave: "",
-    phone: "",
+    documents: null,
   });
-  const [supportDoc, setSupportDoc] = useState(null);
   const [errors, setErrors] = useState({});
 
   const validate = () => {
@@ -46,13 +43,9 @@ function CreateLeaveModal({ opened, onClose, onSubmit, loading }) {
     if (!formData.reason || formData.reason.trim().length < 10) {
       newErrors.reason = "Reason must be at least 10 characters";
     }
-    if (
-      !formData.address_during_leave ||
-      formData.address_during_leave.trim().length < 5
-    ) {
-      newErrors.address_during_leave = "Address is required";
+    if (!formData.documents) {
+      newErrors.documents = "Supporting documents are strictly mandatory";
     }
-    if (!formData.phone) newErrors.phone = "Contact phone is required";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -61,23 +54,13 @@ function CreateLeaveModal({ opened, onClose, onSubmit, loading }) {
     e.preventDefault();
     if (!validate()) return;
 
-    const submitData = {
-      ...formData,
-      start_date: formData.start_date?.toISOString().split("T")[0],
-      end_date: formData.end_date?.toISOString().split("T")[0],
-    };
+    const fd = new FormData();
+    fd.append("start_date", formData.start_date?.toISOString().split("T")[0]);
+    fd.append("end_date", formData.end_date?.toISOString().split("T")[0]);
+    fd.append("reason", formData.reason);
+    fd.append("documents", formData.documents);
 
-    // If file upload is present, use FormData
-    if (supportDoc) {
-      const fd = new FormData();
-      Object.entries(submitData).forEach(([key, value]) => {
-        if (value !== null && value !== undefined) fd.append(key, value);
-      });
-      fd.append("supporting_document", supportDoc);
-      onSubmit(fd);
-    } else {
-      onSubmit(submitData);
-    }
+    onSubmit(fd);
   };
 
   const handleChange = (field, value) => {
@@ -90,10 +73,8 @@ function CreateLeaveModal({ opened, onClose, onSubmit, loading }) {
       start_date: null,
       end_date: null,
       reason: "",
-      address_during_leave: "",
-      phone: "",
+      documents: null,
     });
-    setSupportDoc(null);
     setErrors({});
     onClose();
   };
@@ -126,6 +107,7 @@ function CreateLeaveModal({ opened, onClose, onSubmit, loading }) {
                 value={formData.start_date}
                 onChange={(value) => handleChange("start_date", value)}
                 error={errors.start_date}
+                withAsterisk
               />
             </Grid.Col>
             <Grid.Col span={6}>
@@ -137,6 +119,7 @@ function CreateLeaveModal({ opened, onClose, onSubmit, loading }) {
                 value={formData.end_date}
                 onChange={(value) => handleChange("end_date", value)}
                 error={errors.end_date}
+                withAsterisk
               />
             </Grid.Col>
           </Grid>
@@ -155,46 +138,35 @@ function CreateLeaveModal({ opened, onClose, onSubmit, loading }) {
 
           <Textarea
             label="Reason"
-            placeholder="Enter detailed reason for leave"
+            placeholder="Enter detailed reason for leave (medical, personal, etc.)"
+            description="Minimum 10 characters"
             required
             minRows={3}
             value={formData.reason}
             onChange={(e) => handleChange("reason", e.currentTarget.value)}
             error={errors.reason}
+            withAsterisk
           />
-          <Textarea
-            label="Address During Leave"
-            placeholder="Enter address where you'll be staying"
-            required
-            value={formData.address_during_leave}
-            onChange={(e) =>
-              handleChange("address_during_leave", e.currentTarget.value)
-            }
-            error={errors.address_during_leave}
-          />
-          <TextInput
-            label="Contact Phone"
-            placeholder="Enter contact number"
-            required
-            value={formData.phone}
-            onChange={(e) => handleChange("phone", e.currentTarget.value)}
-            error={errors.phone}
-          />
+
           <FileInput
             label="Supporting Document"
-            description="Upload medical certificate or parental consent (optional)"
+            description="Medical certificate or parental consent is strictly required (PDF/Images)"
             placeholder="Click to upload"
+            required
             accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
             leftSection={<IconUpload size={16} />}
-            value={supportDoc}
-            onChange={setSupportDoc}
+            value={formData.documents}
+            onChange={(file) => handleChange("documents", file)}
+            error={errors.documents}
             clearable
+            withAsterisk
           />
+
           <Group justify="flex-end" mt="md">
             <Button variant="light" onClick={handleClose}>
               Cancel
             </Button>
-            <Button type="submit" loading={loading}>
+            <Button type="submit" loading={loading} disabled={loading}>
               Submit Leave Request
             </Button>
           </Group>
