@@ -49,10 +49,13 @@ export const leaveRejectRoute = (leaveId) =>
 export const complaintsRoute = `${BASE_URL}/complaints/`;
 export const complaintDetailRoute = (complaintId) =>
   `${BASE_URL}/complaints/${complaintId}/`;
+export const complaintStartRoute = (complaintId) =>
+  `${BASE_URL}/complaints/${complaintId}/start/`;
 export const complaintEscalateRoute = (complaintId) =>
   `${BASE_URL}/complaints/${complaintId}/escalate/`;
 export const complaintResolveRoute = (complaintId) =>
   `${BASE_URL}/complaints/${complaintId}/resolve/`;
+export const complaintReportRoute = `${BASE_URL}/complaints/report/`;
 
 // Accommodation Management (HM-WF-103)
 export const accommodationWindowsRoute = `${BASE_URL}/accommodation/windows/`;

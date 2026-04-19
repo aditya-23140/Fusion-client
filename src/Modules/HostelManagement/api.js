@@ -19,8 +19,10 @@ import {
   // Complaint Management (HM-WF-102)
   complaintsRoute,
   complaintDetailRoute,
+  complaintStartRoute,
   complaintEscalateRoute,
   complaintResolveRoute,
+  complaintReportRoute,
   // Accommodation Management (HM-WF-103)
   accommodationWindowsRoute,
   accommodationSubmitRequestRoute,
@@ -239,6 +241,16 @@ export const resolveComplaint = async (complaintId, data) => {
     complaintResolveRoute(complaintId),
     data,
   );
+  return response.data;
+};
+
+export const startComplaint = async (complaintId) => {
+  const response = await apiClient.post(complaintStartRoute(complaintId));
+  return response.data;
+};
+
+export const fetchComplaintReport = async () => {
+  const response = await apiClient.get(complaintReportRoute);
   return response.data;
 };
 

@@ -25,27 +25,26 @@ import {
 } from "@tabler/icons-react";
 
 const statusColors = {
-  submitted: "blue",
-  under_review: "yellow",
-  escalated: "orange",
-  resolved: "green",
-  closed: "gray",
+  Submitted: "blue",
+  InProgress: "yellow",
+  Escalated: "orange",
+  Resolved: "green",
+  Closed: "gray",
 };
 
 const statusLabels = {
-  submitted: "Submitted",
-  under_review: "Under Review",
-  escalated: "Escalated",
-  resolved: "Resolved",
-  closed: "Closed",
+  Submitted: "Submitted",
+  InProgress: "In Progress",
+  Escalated: "Escalated to Warden",
+  Resolved: "Resolved",
+  Closed: "Closed",
 };
 
 const categoryColors = {
-  facility: "purple",
-  food: "orange",
-  security: "red",
-  ragging: "pink",
-  other: "gray",
+  Maintenance: "purple",
+  Cleaning: "orange",
+  Security: "red",
+  Other: "gray",
 };
 
 const priorityColors = {
@@ -58,8 +57,10 @@ const priorityColors = {
 export default function ComplaintCard({
   complaint,
   onView,
+  onStart,
   onEscalate,
   onResolve,
+  canStart,
   canEscalate,
   canResolve,
   showActions = true,
@@ -74,9 +75,10 @@ export default function ComplaintCard({
             </ThemeIcon>
             <Stack gap={4}>
               <Text fw={600} size="sm">
-                Complaint #{complaint.id}
+                {complaint.complaint_uid || `Complaint #${complaint.id}`}
               </Text>
               <Text size="xs" c="dimmed">
+                Submitted on{" "}
                 {new Date(complaint.created_at).toLocaleDateString()}
               </Text>
             </Stack>
@@ -121,24 +123,27 @@ export default function ComplaintCard({
 
         {showActions && (
           <Group justify="flex-end" gap="xs">
-            <Tooltip label="View Details">
-              <ActionIcon
+            {canStart && (
+              <Button
+                size="xs"
                 variant="light"
                 color="blue"
-                onClick={() => onView?.(complaint)}
+                onClick={() => onStart?.(complaint)}
               >
-                <IconChevronRight size={18} />
-              </ActionIcon>
-            </Tooltip>
+                Start Work
+              </Button>
+            )}
             {canEscalate && (
-              <Tooltip label="Escalate">
-                <ActionIcon
+              <Tooltip label="Escalate to Warden">
+                <Button
+                  size="xs"
                   variant="light"
                   color="orange"
                   onClick={() => onEscalate?.(complaint)}
                 >
-                  <IconArrowNarrowUp size={18} />
-                </ActionIcon>
+                  <IconArrowNarrowUp size={16} />
+                  Escalate
+                </Button>
               </Tooltip>
             )}
             {canResolve && (
@@ -153,6 +158,15 @@ export default function ComplaintCard({
                 </Button>
               </Tooltip>
             )}
+            <Tooltip label="View Details & History">
+              <ActionIcon
+                variant="light"
+                color="blue"
+                onClick={() => onView?.(complaint)}
+              >
+                <IconChevronRight size={18} />
+              </ActionIcon>
+            </Tooltip>
           </Group>
         )}
       </Stack>
@@ -163,6 +177,7 @@ export default function ComplaintCard({
 ComplaintCard.propTypes = {
   complaint: PropTypes.shape({
     id: PropTypes.number.isRequired,
+    complaint_uid: PropTypes.string,
     title: PropTypes.string.isRequired,
     description: PropTypes.string.isRequired,
     category: PropTypes.string.isRequired,
@@ -172,8 +187,10 @@ ComplaintCard.propTypes = {
     priority: PropTypes.string,
   }).isRequired,
   onView: PropTypes.func,
+  onStart: PropTypes.func,
   onEscalate: PropTypes.func,
   onResolve: PropTypes.func,
+  canStart: PropTypes.bool,
   canEscalate: PropTypes.bool,
   canResolve: PropTypes.bool,
   showActions: PropTypes.bool,

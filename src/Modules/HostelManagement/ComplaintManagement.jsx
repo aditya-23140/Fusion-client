@@ -2,44 +2,48 @@
  * ComplaintManagement - Thin View
  * Manages hostel complaints (UC-006, UC-007, UC-008, UC-009)
  * Orchestrates components and handles state, calls api.js
- * Role-based visibility:
- * - Student: Submit complaints, view own complaints
- * - Caretaker: View all complaints, resolve, escalate
- * - Warden: View escalated complaints, resolve
  */
 
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Container,
-  Card,
   Title,
   Button,
   Group,
   Alert,
+  Grid,
+  Paper,
+  TextInput,
   Stack,
-  Modal,
   Textarea,
   Tabs,
   Badge,
   Text,
   Select,
+  Modal,
 } from "@mantine/core";
 import {
   IconPlus,
   IconAlertCircle,
   IconUser,
   IconList,
-  IconAlertTriangle,
+  IconSearch,
+  IconFilter,
+  IconDashboard,
+  IconChecklist,
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import { useSelector } from "react-redux";
 import ComplaintCard from "./components/ComplaintCard";
 import CreateComplaintModal from "./components/CreateComplaintModal";
+import ComplaintDetailDrawer from "./components/ComplaintDetailDrawer";
 import {
   fetchComplaints,
   fetchMyComplaints,
   escalateComplaint,
   resolveComplaint,
+  startComplaint,
+  fetchComplaintReport,
 } from "./api";
 
 export default function ComplaintManagement() {
@@ -53,37 +57,39 @@ export default function ComplaintManagement() {
   const [resolveModalOpen, setResolveModalOpen] = useState(false);
   const [escalationReason, setEscalationReason] = useState("");
   const [resolutionRemarks, setResolutionRemarks] = useState("");
-  const [activeTab, setActiveTab] = useState("my");
   const [statusFilter, setStatusFilter] = useState(null);
+  const [categoryFilter, setCategoryFilter] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [reportData, setReportData] = useState(null);
+  const [loadingReport, setLoadingReport] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const userRole = useSelector((state) => state.user.role);
   const isStaff = userRole === "caretaker" || userRole === "warden";
   const isStudent = userRole === "student";
+  const [activeTab, setActiveTab] = useState(isStaff ? "all" : "my");
 
   const loadData = useCallback(async () => {
     try {
       setError(null);
-      const promises = [];
+      const [allData, personalData] = await Promise.all([
+        fetchComplaints(),
+        isStudent ? fetchMyComplaints() : Promise.resolve([]),
+      ]);
+      setComplaints(allData);
+      setMyComplaints(personalData);
 
-      // Students see their own complaints; staff see all
-      if (isStudent) {
-        promises.push(fetchMyComplaints());
-        const [myData] = await Promise.all(promises);
-        setMyComplaints(myData);
-      } else {
-        promises.push(
-          fetchComplaints(),
-          fetchMyComplaints().catch(() => []),
-        );
-        const [allData, myData] = await Promise.all(promises);
-        setComplaints(allData);
-        setMyComplaints(myData);
+      if (userRole === "warden") {
+        setLoadingReport(true);
+        fetchComplaintReport()
+          .then(setReportData)
+          .finally(() => setLoadingReport(false));
       }
     } catch (err) {
       setError("Failed to load complaints. Please try again.");
       console.error(err);
     }
-  }, [isStudent]);
+  }, [userRole, isStudent]);
 
   useEffect(() => {
     loadData();
@@ -166,316 +172,482 @@ export default function ComplaintManagement() {
     }
   };
 
-  // Filter complaints by status
-  const getFilteredComplaints = (list) => {
-    if (!statusFilter) return list;
-    return list.filter((c) => c.status === statusFilter);
+  const handleStartWork = async (complaintId) => {
+    try {
+      setSubmitting(true);
+      await startComplaint(complaintId);
+      notifications.show({
+        title: "Success",
+        message: "Complaint status updated to In Progress",
+        color: "green",
+      });
+      loadData();
+    } catch (err) {
+      notifications.show({
+        title: "Error",
+        message: err.response?.data?.detail || "Failed to start work",
+        color: "red",
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  // Stats for header
+  const getFilteredComplaints = (list) => {
+    return list.filter((c) => {
+      const matchesStatus =
+        !statusFilter || c.status.toLowerCase() === statusFilter.toLowerCase();
+      const matchesCategory = !categoryFilter || c.category === categoryFilter;
+      const query = searchQuery.toLowerCase();
+      const matchesSearch =
+        !searchQuery ||
+        c.complaint_uid?.toLowerCase().includes(query) ||
+        c.description.toLowerCase().includes(query) ||
+        c.category.toLowerCase().includes(query);
+
+      return matchesStatus && matchesCategory && matchesSearch;
+    });
+  };
+
   const activeCount = complaints.filter(
-    (c) => c.status === "submitted" || c.status === "under_review",
+    (c) => c.status === "Submitted" || c.status === "InProgress",
   ).length;
   const escalatedCount = complaints.filter(
-    (c) => c.status === "escalated",
+    (c) => c.status === "Escalated",
   ).length;
 
   return (
-    <Container size="lg" py="xl">
-      <Stack gap="lg">
-        <Group justify="space-between" align="center">
-          <Title order={2}>Complaint Management</Title>
-          {isStudent && (
-            <Button
-              leftSection={<IconPlus size={18} />}
-              onClick={() => setModalOpen(true)}
-            >
-              New Complaint
-            </Button>
-          )}
-        </Group>
-
-        {error && (
-          <Alert icon={<IconAlertCircle />} color="red" title="Error">
-            {error}
-          </Alert>
-        )}
-
-        {/* Stats cards for staff */}
-        {isStaff && (
-          <Group grow>
-            <Card withBorder p="lg">
-              <Stack gap={4}>
-                <Text size="sm" fw={500} c="dimmed">
-                  Active Complaints
-                </Text>
-                <Text fw={700} size="xl" c="blue">
-                  {activeCount}
-                </Text>
-              </Stack>
-            </Card>
-            <Card withBorder p="lg">
-              <Stack gap={4}>
-                <Text size="sm" fw={500} c="dimmed">
-                  Escalated
-                </Text>
-                <Text fw={700} size="xl" c="orange">
-                  {escalatedCount}
-                </Text>
-              </Stack>
-            </Card>
-            <Card withBorder p="lg">
-              <Stack gap={4}>
-                <Text size="sm" fw={500} c="dimmed">
-                  Total
-                </Text>
-                <Text fw={700} size="xl">
-                  {complaints.length}
-                </Text>
-              </Stack>
-            </Card>
-          </Group>
-        )}
-
-        {/* Status filter */}
-        {isStaff && (
-          <Select
-            placeholder="Filter by status"
-            clearable
-            data={[
-              { value: "submitted", label: "Submitted" },
-              { value: "under_review", label: "Under Review" },
-              { value: "escalated", label: "Escalated" },
-              { value: "resolved", label: "Resolved" },
-              { value: "closed", label: "Closed" },
-            ]}
-            value={statusFilter}
-            onChange={setStatusFilter}
-            style={{ maxWidth: 250 }}
-          />
-        )}
-
-        <Tabs value={activeTab} onChange={setActiveTab}>
-          <Tabs.List mb="md">
-            <Tabs.Tab
-              value="my"
-              leftSection={<IconUser size={14} />}
-              rightSection={<Badge size="sm">{myComplaints.length}</Badge>}
-            >
-              {isStudent ? "My Complaints" : "My Complaints"}
-            </Tabs.Tab>
-            {isStaff && (
-              <Tabs.Tab
-                value="all"
-                leftSection={<IconList size={14} />}
-                rightSection={<Badge size="sm">{complaints.length}</Badge>}
-              >
-                All Complaints
-              </Tabs.Tab>
-            )}
-            {userRole === "warden" && (
-              <Tabs.Tab
-                value="escalated"
-                leftSection={<IconAlertTriangle size={14} />}
-                rightSection={
-                  <Badge size="sm" color="orange">
-                    {escalatedCount}
-                  </Badge>
-                }
-              >
-                Escalated
-              </Tabs.Tab>
-            )}
-          </Tabs.List>
-
-          <Tabs.Panel value="my">
-            <Stack gap="md">
-              {myComplaints.length === 0 ? (
-                <Card withBorder p="xl">
-                  <Text c="dimmed" ta="center">
-                    {isStudent
-                      ? "You haven't filed any complaints yet."
-                      : "No complaints assigned to you."}
+    <Container size="xl" py="xl">
+      <Grid gutter="xl">
+        {/* Sidebar: Stats & Filters */}
+        <Grid.Col span={{ base: 12, md: 3 }}>
+          <Stack gap="lg">
+            <Paper withBorder p="md" radius="md" shadow="sm">
+              <Group mb="md">
+                <IconDashboard
+                  size={20}
+                  color="var(--mantine-color-blue-filled)"
+                />
+                <Text fw={700}>Command Center</Text>
+              </Group>
+              <Stack gap="sm">
+                <Paper withBorder p="sm" bg="gray.0" radius="sm">
+                  <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
+                    Active Issues
                   </Text>
-                </Card>
-              ) : (
-                getFilteredComplaints(myComplaints).map((complaint) => (
-                  <ComplaintCard
-                    key={complaint.id}
-                    complaint={complaint}
-                    onView={() => setSelectedComplaint(complaint)}
-                    showActions={false}
-                  />
-                ))
-              )}
-            </Stack>
-          </Tabs.Panel>
-
-          {isStaff && (
-            <Tabs.Panel value="all">
-              <Stack gap="md">
-                {getFilteredComplaints(complaints).length === 0 ? (
-                  <Card withBorder p="xl">
-                    <Text c="dimmed" ta="center">
-                      No complaints found.
-                    </Text>
-                  </Card>
-                ) : (
-                  getFilteredComplaints(complaints).map((complaint) => (
-                    <ComplaintCard
-                      key={complaint.id}
-                      complaint={complaint}
-                      onView={() => setSelectedComplaint(complaint)}
-                      onEscalate={() => {
-                        setSelectedComplaint(complaint);
-                        setEscalateModalOpen(true);
-                      }}
-                      onResolve={() => {
-                        setSelectedComplaint(complaint);
-                        setResolveModalOpen(true);
-                      }}
-                      canEscalate={
-                        userRole === "caretaker" &&
-                        (complaint.status === "submitted" ||
-                          complaint.status === "under_review")
-                      }
-                      canResolve={
-                        isStaff &&
-                        complaint.status !== "resolved" &&
-                        complaint.status !== "closed"
-                      }
-                      showActions
-                    />
-                  ))
-                )}
+                  <Text fw={700} size="xl" c="blue">
+                    {activeCount}
+                  </Text>
+                </Paper>
+                <Paper withBorder p="sm" bg="gray.0" radius="sm">
+                  <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
+                    Escalations
+                  </Text>
+                  <Text fw={700} size="xl" c="orange">
+                    {escalatedCount}
+                  </Text>
+                </Paper>
+                <Paper withBorder p="sm" bg="gray.0" radius="sm">
+                  <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
+                    Total Registry
+                  </Text>
+                  <Text fw={700} size="xl">
+                    {complaints.length}
+                  </Text>
+                </Paper>
               </Stack>
-            </Tabs.Panel>
-          )}
+            </Paper>
 
-          {userRole === "warden" && (
-            <Tabs.Panel value="escalated">
-              <Stack gap="md">
-                {complaints.filter((c) => c.status === "escalated").length ===
-                0 ? (
-                  <Card withBorder p="xl">
-                    <Text c="dimmed" ta="center">
-                      No escalated complaints.
-                    </Text>
-                  </Card>
-                ) : (
-                  complaints
-                    .filter((c) => c.status === "escalated")
-                    .map((complaint) => (
+            <Paper withBorder p="md" radius="md" shadow="sm">
+              <Group mb="md">
+                <IconFilter
+                  size={20}
+                  color="var(--mantine-color-teal-filled)"
+                />
+                <Text fw={700}>Refine Search</Text>
+              </Group>
+              <Stack gap="sm">
+                <Select
+                  label="Status"
+                  placeholder="Select Status"
+                  clearable
+                  data={[
+                    { value: "submitted", label: "Submitted" },
+                    { value: "inprogress", label: "In Progress" },
+                    { value: "escalated", label: "Escalated" },
+                    { value: "resolved", label: "Resolved" },
+                    { value: "closed", label: "Closed" },
+                  ]}
+                  value={statusFilter}
+                  onChange={setStatusFilter}
+                />
+                <Select
+                  label="Department"
+                  placeholder="Select Category"
+                  clearable
+                  data={["Maintenance", "Cleaning", "Security", "Other"]}
+                  value={categoryFilter}
+                  onChange={setCategoryFilter}
+                />
+              </Stack>
+            </Paper>
+
+            {isStudent && (
+              <Button
+                fullWidth
+                leftSection={<IconPlus size={18} />}
+                onClick={() => setModalOpen(true)}
+                variant="gradient"
+                gradient={{ from: "blue", to: "cyan" }}
+                size="md"
+              >
+                New Complaint
+              </Button>
+            )}
+          </Stack>
+        </Grid.Col>
+
+        {/* Main Content Area */}
+        <Grid.Col span={{ base: 12, md: 9 }}>
+          <Stack gap="lg">
+            <Group justify="space-between" align="center">
+              <Title order={2}>Hostel Grievances</Title>
+              <TextInput
+                placeholder="Search by ID or description..."
+                leftSection={<IconSearch size={16} />}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.currentTarget.value)}
+                style={{ width: 350 }}
+                radius="xl"
+              />
+            </Group>
+
+            {error && (
+              <Alert
+                icon={<IconAlertCircle />}
+                color="red"
+                title="System Error"
+                variant="filled"
+                radius="md"
+              >
+                {error}
+              </Alert>
+            )}
+
+            <Tabs
+              value={activeTab}
+              onChange={setActiveTab}
+              variant="pills"
+              radius="xl"
+            >
+              <Tabs.List mb="md">
+                {isStudent && (
+                  <Tabs.Tab
+                    value="my"
+                    leftSection={<IconUser size={14} />}
+                    rightSection={
+                      <Badge size="sm" variant="filled" circle>
+                        {myComplaints.length}
+                      </Badge>
+                    }
+                  >
+                    My Requests
+                  </Tabs.Tab>
+                )}
+                {isStaff && (
+                  <Tabs.Tab
+                    value="all"
+                    leftSection={<IconList size={14} />}
+                    rightSection={
+                      <Badge size="sm" variant="filled" circle>
+                        {complaints.length}
+                      </Badge>
+                    }
+                  >
+                    Registry
+                  </Tabs.Tab>
+                )}
+                {userRole === "warden" && (
+                  <Tabs.Tab
+                    value="reports"
+                    leftSection={<IconChecklist size={14} />}
+                  >
+                    Audit Report
+                  </Tabs.Tab>
+                )}
+              </Tabs.List>
+
+              <Tabs.Panel value="my">
+                <Stack gap="md">
+                  {getFilteredComplaints(myComplaints).length > 0 ? (
+                    getFilteredComplaints(myComplaints).map((complaint) => (
                       <ComplaintCard
                         key={complaint.id}
                         complaint={complaint}
-                        onView={() => setSelectedComplaint(complaint)}
-                        onResolve={() => {
-                          setSelectedComplaint(complaint);
-                          setResolveModalOpen(true);
+                        onView={(c) => {
+                          setSelectedComplaint(c);
+                          setDrawerOpen(true);
                         }}
-                        canResolve
-                        showActions
+                        showActions={false}
                       />
                     ))
+                  ) : (
+                    <Paper
+                      p="xl"
+                      withBorder
+                      style={{
+                        textAlign: "center",
+                        backgroundColor: "#fdfdfd",
+                        borderStyle: "dashed",
+                      }}
+                      radius="md"
+                    >
+                      <Text c="dimmed">No personal grievances found.</Text>
+                    </Paper>
+                  )}
+                </Stack>
+              </Tabs.Panel>
+
+              <Tabs.Panel value="all">
+                <Stack gap="md">
+                  {getFilteredComplaints(complaints).length > 0 ? (
+                    getFilteredComplaints(complaints).map((complaint) => (
+                      <ComplaintCard
+                        key={complaint.id}
+                        complaint={complaint}
+                        onView={(c) => {
+                          setSelectedComplaint(c);
+                          setDrawerOpen(true);
+                        }}
+                        onStart={(c) => handleStartWork(c.id)}
+                        onEscalate={(c) => {
+                          setSelectedComplaint(c);
+                          setEscalateModalOpen(true);
+                        }}
+                        onResolve={(c) => {
+                          setSelectedComplaint(c);
+                          setResolveModalOpen(true);
+                        }}
+                        canStart={complaint.status === "Submitted"}
+                        canEscalate={complaint.status === "InProgress"}
+                        canResolve={["InProgress", "Escalated"].includes(
+                          complaint.status,
+                        )}
+                      />
+                    ))
+                  ) : (
+                    <Paper
+                      p="xl"
+                      withBorder
+                      style={{
+                        textAlign: "center",
+                        backgroundColor: "#fdfdfd",
+                        borderStyle: "dashed",
+                      }}
+                      radius="md"
+                    >
+                      <Text c="dimmed">No assigned registry items found.</Text>
+                    </Paper>
+                  )}
+                </Stack>
+              </Tabs.Panel>
+
+              <Tabs.Panel value="reports">
+                {loadingReport ? (
+                  <Paper
+                    p="xl"
+                    withBorder
+                    style={{ textAlign: "center" }}
+                    radius="md"
+                  >
+                    <Text c="dimmed">
+                      Scanning registry for audit metrics...
+                    </Text>
+                  </Paper>
+                ) : userRole === "warden" && reportData ? (
+                  <Stack gap="xl" mt="md">
+                    <Grid>
+                      <Grid.Col span={6}>
+                        <Paper
+                          withBorder
+                          p="xl"
+                          radius="md"
+                          bg="blue.0"
+                          shadow="xs"
+                        >
+                          <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
+                            Resolved Today
+                          </Text>
+                          <Text fw={800} size="36px" c="blue.8">
+                            {reportData.summary.resolved_today}
+                          </Text>
+                        </Paper>
+                      </Grid.Col>
+                      <Grid.Col span={6}>
+                        <Paper
+                          withBorder
+                          p="xl"
+                          radius="md"
+                          bg="teal.0"
+                          shadow="xs"
+                        >
+                          <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
+                            System Total
+                          </Text>
+                          <Text fw={800} size="36px" c="teal.8">
+                            {reportData.summary.total_complaints}
+                          </Text>
+                        </Paper>
+                      </Grid.Col>
+                    </Grid>
+
+                    <Paper withBorder p="lg" radius="md" shadow="sm">
+                      <Title order={4} mb="lg">
+                        Operational Statistics
+                      </Title>
+                      <Stack gap="xs">
+                        {reportData.metrics.map((m, i) => (
+                          <Group
+                            key={i}
+                            justify="space-between"
+                            p="md"
+                            style={{
+                              borderRadius: "12px",
+                              background: "#f8f9fa",
+                            }}
+                          >
+                            <Stack gap={0}>
+                              <Text size="sm" fw={700}>
+                                {m.category}
+                              </Text>
+                              <Text size="xs" c="dimmed">
+                                {m.status}
+                              </Text>
+                            </Stack>
+                            <Badge size="lg" variant="light">
+                              {m.total}
+                            </Badge>
+                          </Group>
+                        ))}
+                      </Stack>
+                    </Paper>
+                  </Stack>
+                ) : (
+                  <Paper p="xl" withBorder style={{ textAlign: "center" }}>
+                    <Text c="dimmed">Report parameters not initialized.</Text>
+                  </Paper>
                 )}
-              </Stack>
-            </Tabs.Panel>
+              </Tabs.Panel>
+            </Tabs>
+          </Stack>
+        </Grid.Col>
+      </Grid>
+
+      <ComplaintDetailDrawer
+        opened={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        complaint={selectedComplaint}
+      />
+
+      <CreateComplaintModal
+        opened={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSubmit={() => {
+          setModalOpen(false);
+          loadData();
+        }}
+        loading={submitting}
+      />
+
+      <Modal
+        opened={escalateModalOpen}
+        onClose={() => setEscalateModalOpen(false)}
+        title="Escalate Issue to Warden"
+        centered
+        radius="md"
+      >
+        <Stack gap="md">
+          {selectedComplaint && (
+            <Alert color="blue" variant="light" radius="md">
+              <Text size="sm" fw={500}>
+                #{selectedComplaint.complaint_uid || selectedComplaint.id}:{" "}
+                {selectedComplaint.title}
+              </Text>
+            </Alert>
           )}
-        </Tabs>
+          <Textarea
+            label="Escalation Details"
+            placeholder="Justify the escalation for Warden review..."
+            required
+            minRows={4}
+            value={escalationReason}
+            onChange={(e) => setEscalationReason(e.currentTarget.value)}
+            radius="md"
+          />
+          <Group justify="flex-end">
+            <Button
+              variant="subtle"
+              color="gray"
+              onClick={() => setEscalateModalOpen(false)}
+            >
+              Back
+            </Button>
+            <Button
+              color="orange"
+              loading={submitting}
+              onClick={handleEscalate}
+              radius="md"
+            >
+              Confirm Escalation
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
 
-        <CreateComplaintModal
-          opened={modalOpen}
-          onClose={() => setModalOpen(false)}
-          onSubmit={() => {
-            setModalOpen(false);
-            loadData();
-          }}
-          loading={submitting}
-        />
-
-        {/* Escalate Modal */}
-        <Modal
-          opened={escalateModalOpen}
-          onClose={() => setEscalateModalOpen(false)}
-          title="Escalate Complaint to Warden"
-          centered
-        >
-          <Stack gap="md">
-            {selectedComplaint && (
-              <Alert color="blue" variant="light">
-                <Text size="sm" fw={500}>
-                  Complaint #{selectedComplaint.id}: {selectedComplaint.title}
-                </Text>
-              </Alert>
-            )}
-            <Textarea
-              label="Escalation Reason"
-              placeholder="Why is this complaint being escalated to the Warden?"
-              required
-              minRows={3}
-              value={escalationReason}
-              onChange={(e) => setEscalationReason(e.currentTarget.value)}
-            />
-            <Group justify="flex-end">
-              <Button
-                variant="default"
-                onClick={() => setEscalateModalOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                color="orange"
-                loading={submitting}
-                onClick={handleEscalate}
-              >
-                Escalate to Warden
-              </Button>
-            </Group>
-          </Stack>
-        </Modal>
-
-        {/* Resolve Modal */}
-        <Modal
-          opened={resolveModalOpen}
-          onClose={() => setResolveModalOpen(false)}
-          title="Resolve Complaint"
-          centered
-        >
-          <Stack gap="md">
-            {selectedComplaint && (
-              <Alert color="green" variant="light">
-                <Text size="sm" fw={500}>
-                  Complaint #{selectedComplaint.id}: {selectedComplaint.title}
-                </Text>
-              </Alert>
-            )}
-            <Textarea
-              label="Resolution Remarks"
-              placeholder="How was this complaint resolved? (min 10 characters)"
-              required
-              minRows={3}
-              value={resolutionRemarks}
-              onChange={(e) => setResolutionRemarks(e.currentTarget.value)}
-            />
-            <Group justify="flex-end">
-              <Button
-                variant="default"
-                onClick={() => setResolveModalOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                color="green"
-                loading={submitting}
-                onClick={handleResolve}
-              >
-                Mark Resolved
-              </Button>
-            </Group>
-          </Stack>
-        </Modal>
-      </Stack>
+      <Modal
+        opened={resolveModalOpen}
+        onClose={() => setResolveModalOpen(false)}
+        title="Finalize Resolution"
+        centered
+        radius="md"
+      >
+        <Stack gap="md">
+          {selectedComplaint && (
+            <Alert color="green" variant="light" radius="md">
+              <Text size="sm" fw={500}>
+                #{selectedComplaint.complaint_uid || selectedComplaint.id}:{" "}
+                {selectedComplaint.title}
+              </Text>
+            </Alert>
+          )}
+          <Textarea
+            label="Resolution Logic"
+            placeholder="Detail the steps taken to resolve this issue (min 10 chars)..."
+            required
+            minRows={4}
+            value={resolutionRemarks}
+            onChange={(e) => setResolutionRemarks(e.currentTarget.value)}
+            radius="md"
+          />
+          <Group justify="flex-end">
+            <Button
+              variant="subtle"
+              color="gray"
+              onClick={() => setResolveModalOpen(false)}
+            >
+              Back
+            </Button>
+            <Button
+              color="green"
+              loading={submitting}
+              onClick={handleResolve}
+              radius="md"
+            >
+              Confirm Resolution
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Container>
   );
 }
