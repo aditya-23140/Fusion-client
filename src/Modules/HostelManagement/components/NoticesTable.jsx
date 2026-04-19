@@ -68,9 +68,16 @@ function NoticesTable({ notices, loading, onDelete, canDelete = false }) {
 }
 
 NoticesTable.propTypes = {
-  notices: PropTypes.arrayOf(PropTypes.shape({})).isRequired,
+  notices: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+      head_line: PropTypes.string.isRequired,
+      description: PropTypes.string,
+      content: PropTypes.string,
+    }),
+  ).isRequired,
   loading: PropTypes.bool.isRequired,
-  onDelete: PropTypes.func.isRequired,
+  onDelete: PropTypes.func,
   canDelete: PropTypes.bool,
 };
 

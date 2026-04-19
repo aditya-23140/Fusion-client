@@ -84,7 +84,15 @@ function LeavesTable({
 }
 
 LeavesTable.propTypes = {
-  leaves: PropTypes.arrayOf(PropTypes.shape({})).isRequired,
+  leaves: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+      start_date: PropTypes.string,
+      end_date: PropTypes.string,
+      reason: PropTypes.string,
+      status: PropTypes.string,
+    }),
+  ).isRequired,
   loading: PropTypes.bool.isRequired,
   onApprove: PropTypes.func,
   onReject: PropTypes.func,

@@ -96,7 +96,12 @@ CreateNoticeModal.propTypes = {
   onClose: PropTypes.func.isRequired,
   onSubmit: PropTypes.func.isRequired,
   loading: PropTypes.bool.isRequired,
-  halls: PropTypes.arrayOf(PropTypes.shape({})),
+  halls: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+      hall_name: PropTypes.string,
+    }),
+  ),
 };
 
 export default CreateNoticeModal;

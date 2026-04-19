@@ -11,9 +11,6 @@
 
 import axios from "axios";
 import {
-  // Hall Management
-  hallsRoute,
-  hallDetailRoute,
   // Leave Management (HM-WF-101)
   leavesRoute,
   leaveDetailRoute,
@@ -24,11 +21,15 @@ import {
   complaintDetailRoute,
   complaintEscalateRoute,
   complaintResolveRoute,
-  // Room Allocation (HM-WF-103)
-  roomAllocationsRoute,
-  roomAllocationDetailRoute,
-  roomAllocationDeleteRoute,
-  bulkAllocateRoute,
+  // Accommodation Management (HM-WF-103)
+  accommodationWindowsRoute,
+  accommodationSubmitRequestRoute,
+  accommodationRequestsRoute,
+  accommodationCapacityRoute,
+  accommodationBulkAllotRoute,
+  accommodationMyAllotmentRoute,
+  accommodationAllotmentsRoute,
+  accommodationDeleteAllotmentRoute,
   // Room Changes (HM-WF-104)
   roomChangesRoute,
   roomChangeDetailRoute,
@@ -62,13 +63,21 @@ import {
   // Hall Room Routes
   hallRoomsRoute,
   // Super Admin Routes
-  assignWardenRoute,
-  assignCaretakerRoute,
   facultyListRoute,
   staffListRoute,
-  allocateBatchRoute,
   activeBatchYearsRoute,
   roomRenameRoute,
+  // Hostel Setup Foundation
+  hostelsRoute,
+  hostelCreateRoute,
+  hostelDetailRoute,
+  hostelStatusRoute,
+  hostelAssignWardenRoute,
+  hostelAssignCaretakerRoute,
+  hostelRemoveStaffRoute,
+  hostelDeleteRoute,
+  hostelStaffRoute,
+  hostelBulkBatchAllotRoute,
 } from "../../routes/hostelManagementRoutes";
 
 // ══════════════════════════════════════════════════════════════
@@ -221,35 +230,78 @@ export const resolveComplaint = async (complaintId, data) => {
 };
 
 // ══════════════════════════════════════════════════════════════
-// HM-WF-103: ROOM ALLOCATION API CALLS
-// ══════════════════════════════════════════════════════════════
-// HM-WF-103: ROOM ALLOCATION API CALLS
+// HM-WF-103: ACCOMMODATION API CALLS
 // ══════════════════════════════════════════════════════════════
 
-export const fetchRoomAllocations = async (params = {}) => {
-  const { page = 1, page_size = 50 } = params;
-  const response = await apiClient.get(roomAllocationsRoute, {
-    params: { page, page_size },
-  });
+export const fetchAccommodationWindows = async () => {
+  const response = await apiClient.get(accommodationWindowsRoute);
   return response.data;
 };
 
-export const fetchRoomAllocationDetail = async (allocationId) => {
-  const response = await apiClient.get(roomAllocationDetailRoute(allocationId));
-  return response.data;
-};
-
-export const deleteRoomAllocation = async (allocationId) => {
-  const response = await apiClient.delete(
-    roomAllocationDeleteRoute(allocationId),
+export const submitAccommodationRequest = async (requestData) => {
+  const response = await apiClient.post(
+    accommodationSubmitRequestRoute,
+    requestData,
   );
   return response.data;
 };
 
-export const bulkAllocateRooms = async (allocationsData) => {
-  const response = await apiClient.post(bulkAllocateRoute, {
-    allocations: allocationsData,
+export const fetchAccommodationRequests = async (params = {}) => {
+  const response = await apiClient.get(accommodationRequestsRoute, { params });
+  return response.data;
+};
+
+export const fetchRoomCapacityDashboard = async () => {
+  const response = await apiClient.get(accommodationCapacityRoute);
+  return response.data;
+};
+
+export const performBulkAllotment = async (requestIds) => {
+  const response = await apiClient.post(accommodationBulkAllotRoute, {
+    request_ids: requestIds,
   });
+  return response.data;
+};
+
+export const fetchMyAllotment = async () => {
+  const response = await apiClient.get(accommodationMyAllotmentRoute);
+  return response.data;
+};
+
+/**
+ * Fetch all room allocations (paginated)
+ * @param {Object} params - Query parameters (hall, page, page_size)
+ */
+export const fetchRoomAllocations = async (params = {}) => {
+  try {
+    const response = await apiClient.get(accommodationAllotmentsRoute, {
+      params,
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Failed to fetch room allocations:", error);
+    throw error;
+  }
+};
+
+/**
+ * Create an individual room allotment
+ * @param {Object} data - { student, room, allocation_date }
+ */
+export const createRoomAllotment = async (data) => {
+  try {
+    const response = await apiClient.post(accommodationAllotmentsRoute, data);
+    return response.data;
+  } catch (error) {
+    console.error("Failed to create room allotment:", error);
+    throw error;
+  }
+};
+
+export const deleteRoomAllocation = async (allocationId) => {
+  const response = await apiClient.delete(
+    accommodationDeleteAllotmentRoute(allocationId),
+  );
   return response.data;
 };
 
@@ -462,27 +514,27 @@ export const checkOutGuest = async (bookingId, data) => {
 // ══════════════════════════════════════════════════════════════
 
 export const fetchHalls = async () => {
-  const response = await apiClient.get(hallsRoute);
+  const response = await apiClient.get(hostelsRoute);
   return response.data;
 };
 
 export const fetchHallDetail = async (hallId) => {
-  const response = await apiClient.get(hallDetailRoute(hallId));
+  const response = await apiClient.get(hostelDetailRoute(hallId));
   return response.data;
 };
 
 export const createHall = async (hallData) => {
-  const response = await apiClient.post(hallsRoute, hallData);
+  const response = await apiClient.post(hostelCreateRoute, hallData);
   return response.data;
 };
 
 export const updateHall = async (hallId, data) => {
-  const response = await apiClient.put(hallDetailRoute(hallId), data);
+  const response = await apiClient.patch(hostelStatusRoute(hallId), data);
   return response.data;
 };
 
 export const deleteHall = async (hallId) => {
-  const response = await apiClient.delete(hallDetailRoute(hallId));
+  const response = await apiClient.delete(hostelDeleteRoute(hallId));
   return response.data;
 };
 
@@ -613,15 +665,15 @@ export const fetchStaffList = async () => {
  * @param {number} facultyId - The ID of the faculty to assign as warden
  * @returns {Promise<Object>} Assignment result with warden_id
  */
-export const assignWarden = async (hallId, facultyId) => {
+export const assignWarden = async (hallId, data) => {
   try {
-    const response = await apiClient.post(assignWardenRoute, {
-      hall_id: hallId,
-      faculty_id: facultyId,
-    });
+    const response = await apiClient.post(
+      hostelAssignWardenRoute(hallId),
+      data,
+    );
     return response.data;
   } catch (error) {
-    console.error(`Failed to assign warden to hall ${hallId}:`, error);
+    console.error(`Failed to assign warden to hostel ${hallId}:`, error);
     throw error;
   }
 };
@@ -632,15 +684,15 @@ export const assignWarden = async (hallId, facultyId) => {
  * @param {number} staffId - The ID of the staff to assign as caretaker
  * @returns {Promise<Object>} Assignment result with caretaker_id
  */
-export const assignCaretaker = async (hallId, staffId) => {
+export const assignCaretaker = async (hallId, data) => {
   try {
-    const response = await apiClient.post(assignCaretakerRoute, {
-      hall_id: hallId,
-      staff_id: staffId,
-    });
+    const response = await apiClient.post(
+      hostelAssignCaretakerRoute(hallId),
+      data,
+    );
     return response.data;
   } catch (error) {
-    console.error(`Failed to assign caretaker to hall ${hallId}:`, error);
+    console.error(`Failed to assign caretaker to hostel ${hallId}:`, error);
     throw error;
   }
 };
@@ -651,15 +703,15 @@ export const assignCaretaker = async (hallId, staffId) => {
  * @param {number} batchId - The ID of the batch to allocate
  * @returns {Promise<Object>} Allocation result
  */
-export const allocateBatch = async (hallId, batchId) => {
+export const allocateBatch = async (hallId, allocationData) => {
   try {
-    const response = await apiClient.post(allocateBatchRoute, {
-      hall_id: hallId,
-      batch_id: batchId,
-    });
+    const response = await apiClient.post(
+      hostelBulkBatchAllotRoute(hallId),
+      allocationData,
+    );
     return response.data;
   } catch (error) {
-    console.error(`Failed to allocate batch to hall ${hallId}:`, error);
+    console.error(`Failed to allocate batch to hostel ${hallId}:`, error);
     throw error;
   }
 };
@@ -763,6 +815,76 @@ export const rejectExtendedStay = async (id, remarks) => {
 
 export const updateHallStatus = async (id, status) => {
   const response = await apiClient.patch(`/halls/${id}/`, { status });
+  return response.data;
+};
+
+// ══════════════════════════════════════════════════════════════
+// HOSTEL SETUP FOUNDATION API
+// ══════════════════════════════════════════════════════════════
+
+/** Fetch all hostels with staff and room info */
+export const fetchHostels = async () => {
+  const response = await apiClient.get(hostelsRoute);
+  return response.data;
+};
+
+/** Create a new hostel */
+export const createHostel = async (data) => {
+  const response = await apiClient.post(hostelCreateRoute, data);
+  return response.data;
+};
+
+/** Fetch a single hostel's details by hall_id */
+export const fetchHostelDetail = async (hallId) => {
+  const response = await apiClient.get(hostelDetailRoute(hallId));
+  return response.data;
+};
+
+/** Update hostel status by hall_id */
+export const updateHostelStatus = async (hallId, status) => {
+  const response = await apiClient.patch(hostelStatusRoute(hallId), { status });
+  return response.data;
+};
+
+/** Assign warden by hall_id */
+export const assignHostelWarden = async (hallId, data) => {
+  const response = await apiClient.post(hostelAssignWardenRoute(hallId), data);
+  return response.data;
+};
+
+/** Assign caretaker by hall_id */
+export const assignHostelCaretaker = async (hallId, data) => {
+  const response = await apiClient.post(
+    hostelAssignCaretakerRoute(hallId),
+    data,
+  );
+  return response.data;
+};
+
+/** Remove (deactivate) staff assignment */
+export const removeStaffAssignment = async (assignmentId) => {
+  const response = await apiClient.post(hostelRemoveStaffRoute(assignmentId));
+  return response.data;
+};
+
+/** Permanently delete a hostel */
+export const deleteHostel = async (hallId) => {
+  const response = await apiClient.delete(hostelDeleteRoute(hallId));
+  return response.data;
+};
+
+/** Fetch assignments for a hostel by hall_id */
+export const fetchHostelStaff = async (hallId) => {
+  const response = await apiClient.get(hostelStaffRoute(hallId));
+  return response.data;
+};
+
+/** Perform sequential bulk batch allocation for a hostel */
+export const bulkBatchAllotHostel = async (hallId, data) => {
+  const response = await apiClient.post(
+    hostelBulkBatchAllotRoute(hallId),
+    data,
+  );
   return response.data;
 };
 

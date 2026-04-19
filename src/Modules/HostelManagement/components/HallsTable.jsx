@@ -11,11 +11,11 @@ import DataTable from "./DataTable";
 
 function HallsTable({ halls, loading, onDelete, onView, onStatusChange }) {
   const columns = [
-    { key: "hall_id", label: "Hall ID" },
-    { key: "hall_name", label: "Hall Name" },
-    { key: "max_accomodation", label: "Max Capacity" },
+    { key: "hall_id", label: "Hostel ID" },
+    { key: "hall_name", label: "Hostel Name" },
+    { key: "max_accomodation", label: "Total Capacity" },
     { key: "number_students", label: "Current Students" },
-    { key: "number_of_rooms", label: "Number of Rooms" },
+    { key: "number_of_rooms", label: "Rooms" },
     {
       key: "type_of_seater",
       label: "Seater Type",
@@ -112,7 +112,17 @@ function HallsTable({ halls, loading, onDelete, onView, onStatusChange }) {
 }
 
 HallsTable.propTypes = {
-  halls: PropTypes.arrayOf(PropTypes.shape({})).isRequired,
+  halls: PropTypes.arrayOf(
+    PropTypes.shape({
+      hall_id: PropTypes.string.isRequired,
+      hall_name: PropTypes.string.isRequired,
+      max_accomodation: PropTypes.number,
+      number_students: PropTypes.number,
+      number_of_rooms: PropTypes.number,
+      type_of_seater: PropTypes.string,
+      status: PropTypes.string,
+    }),
+  ).isRequired,
   loading: PropTypes.bool.isRequired,
   onDelete: PropTypes.func,
   onView: PropTypes.func,

@@ -53,13 +53,16 @@ export const complaintEscalateRoute = (complaintId) =>
 export const complaintResolveRoute = (complaintId) =>
   `${BASE_URL}/complaints/${complaintId}/resolve/`;
 
-// Room Allocation (HM-WF-103)
-export const roomAllocationsRoute = `${BASE_URL}/room-allocations/`;
-export const roomAllocationDetailRoute = (allocationId) =>
-  `${BASE_URL}/room-allocations/${allocationId}/`;
-export const roomAllocationDeleteRoute = (allocationId) =>
-  `${BASE_URL}/room-allocations/${allocationId}/delete/`;
-export const bulkAllocateRoute = `${BASE_URL}/room-allocations/bulk-allocate/`;
+// Accommodation Management (HM-WF-103)
+export const accommodationWindowsRoute = `${BASE_URL}/accommodation/windows/`;
+export const accommodationSubmitRequestRoute = `${BASE_URL}/accommodation/request/`;
+export const accommodationRequestsRoute = `${BASE_URL}/accommodation/requests/`;
+export const accommodationCapacityRoute = `${BASE_URL}/accommodation/capacity/`;
+export const accommodationBulkAllotRoute = `${BASE_URL}/accommodation/bulk-allot/`;
+export const accommodationMyAllotmentRoute = `${BASE_URL}/accommodation/my-allotment/`;
+export const accommodationAllotmentsRoute = `${BASE_URL}/accommodation/allotments/`;
+export const accommodationDeleteAllotmentRoute = (id) =>
+  `${BASE_URL}/accommodation/allotments/${id}/delete/`;
 
 // Room Changes (HM-WF-104)
 export const roomChangesRoute = `${BASE_URL}/room-changes/`;
@@ -115,3 +118,23 @@ export const batchDetailRoute = (batchId) =>
   `${host}/programme_curriculum/api/batches/${batchId}/`;
 export const syncBatchRoute = `${host}/programme_curriculum/api/batches/sync/`;
 export const listBatchesStatusRoute = `${host}/programme_curriculum/api/batches/list/`;
+
+// ═══════════════════════════════════════════════════════════════
+// HOSTEL SETUP FOUNDATION ROUTES
+// ═══════════════════════════════════════════════════════════════
+export const hostelsRoute = `${BASE_URL}/hostels/`;
+export const hostelCreateRoute = `${BASE_URL}/hostels/create/`;
+export const hostelDetailRoute = (id) => `${BASE_URL}/hostels/${id}/`;
+export const hostelStatusRoute = (id) => `${BASE_URL}/hostels/${id}/status/`;
+export const hostelAssignWardenRoute = (id) =>
+  `${BASE_URL}/hostels/${id}/assign-warden/`;
+export const hostelAssignCaretakerRoute = (id) =>
+  `${BASE_URL}/hostels/${id}/assign-caretaker/`;
+export const hostelRemoveStaffRoute = (id) =>
+  `${BASE_URL}/hostels/staff-assignments/${id}/remove/`;
+export const hostelReassignStaffRoute = (id) =>
+  `${BASE_URL}/hostels/${id}/reassign-staff/`;
+export const hostelDeleteRoute = (id) => `${BASE_URL}/hostels/${id}/delete/`;
+export const hostelStaffRoute = (id) => `${BASE_URL}/hostels/${id}/staff/`;
+export const hostelBulkBatchAllotRoute = (id) =>
+  `${BASE_URL}/hostels/${id}/bulk-batch-allot/`;

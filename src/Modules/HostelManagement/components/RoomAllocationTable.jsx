@@ -19,13 +19,6 @@ import {
 } from "@mantine/core";
 import { IconChevronRight, IconEdit } from "@tabler/icons-react";
 
-const statusColors = {
-  pending: "yellow",
-  active: "green",
-  completed: "gray",
-  cancelled: "red",
-};
-
 export default function RoomAllocationTable({
   allocations,
   loading = false,
@@ -68,24 +61,25 @@ export default function RoomAllocationTable({
               <Table.Td>
                 <Stack gap={0}>
                   <Text fw={500} size="sm">
-                    {allocation.student?.id?.user?.first_name}{" "}
-                    {allocation.student?.id?.user?.last_name}
+                    {allocation.student_name || "Unknown Student"}
                   </Text>
                   <Text size="xs" c="dimmed">
-                    {allocation.student?.id?.user?.username}
+                    {allocation.student_id || "-"}
                   </Text>
                 </Stack>
               </Table.Td>
-              <Table.Td>{allocation.room?.hall?.name || "-"}</Table.Td>
+              <Table.Td>{allocation.hostel_name || "-"}</Table.Td>
               <Table.Td>
-                <Badge>{allocation.room?.number || "-"}</Badge>
+                <Badge>{allocation.room?.room_number || "-"}</Badge>
               </Table.Td>
               <Table.Td>
-                {new Date(allocation.allocated_date).toLocaleDateString()}
+                {allocation.allotted_at
+                  ? new Date(allocation.allotted_at).toLocaleDateString()
+                  : "-"}
               </Table.Td>
               <Table.Td>
-                <Badge color={statusColors[allocation.status] || "gray"}>
-                  {allocation.status}
+                <Badge color={allocation.is_active ? "green" : "gray"}>
+                  {allocation.is_active ? "active" : "inactive"}
                 </Badge>
               </Table.Td>
               {showActions && (
@@ -125,24 +119,15 @@ export default function RoomAllocationTable({
 RoomAllocationTable.propTypes = {
   allocations: PropTypes.arrayOf(
     PropTypes.shape({
-      id: PropTypes.number.isRequired,
-      student: PropTypes.shape({
-        id: PropTypes.shape({
-          user: PropTypes.shape({
-            first_name: PropTypes.string,
-            last_name: PropTypes.string,
-            username: PropTypes.string,
-          }),
-        }),
-      }),
+      id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+      student_name: PropTypes.string,
+      student_id: PropTypes.string,
+      hostel_name: PropTypes.string,
       room: PropTypes.shape({
-        number: PropTypes.string,
-        hall: PropTypes.shape({
-          name: PropTypes.string,
-        }),
+        room_number: PropTypes.string,
       }),
-      allocated_date: PropTypes.string.isRequired,
-      status: PropTypes.string.isRequired,
+      allotted_at: PropTypes.string,
+      is_active: PropTypes.bool,
     }),
   ).isRequired,
   loading: PropTypes.bool,

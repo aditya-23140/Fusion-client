@@ -176,13 +176,15 @@ RoomChangeRequestForm.propTypes = {
   ),
   availableRooms: PropTypes.arrayOf(
     PropTypes.shape({
-      id: PropTypes.number,
-      number: PropTypes.string,
+      id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+      number: PropTypes.string.isRequired,
       hall: PropTypes.shape({
-        id: PropTypes.number,
-        name: PropTypes.string,
+        id: PropTypes.oneOfType([PropTypes.string, PropTypes.number])
+          .isRequired,
+        name: PropTypes.string.isRequired,
       }),
-      occupancy_type: PropTypes.string,
+      current_occupancy: PropTypes.number,
+      capacity: PropTypes.number,
     }),
   ),
   currentRoom: PropTypes.shape({

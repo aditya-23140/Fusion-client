@@ -10,6 +10,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Flex, Alert } from "@mantine/core";
+import { ModalsProvider } from "@mantine/modals";
 import { IconAlertCircle } from "@tabler/icons-react";
 import { useDispatch, useSelector } from "react-redux";
 import CustomBreadcrumbs from "../../components/Breadcrumbs";
@@ -18,7 +19,6 @@ import { setActiveTab_ } from "../../redux/moduleslice";
 
 // Feature Components
 import HallManagement from "./HallManagement";
-import StaffAssignment from "./StaffAssignment";
 import GuestRoomBookings from "./GuestRoomBookings";
 import NoticeBoard from "./NoticeBoard";
 import LeaveManagement from "./LeaveManagement";
@@ -26,7 +26,7 @@ import ComplaintManagement from "./ComplaintManagement";
 import FineManagement from "./FineManagement";
 import InventoryManagement from "./InventoryManagement";
 import AttendanceManagement from "./AttendanceManagement";
-import RoomAllocationManagement from "./RoomAllocationManagement";
+import AccommodationAllotment from "./components/allotment/AccommodationAllotment";
 
 export default function HostelManagementPage() {
   const [activeTab, setActiveTab] = useState("0");
@@ -40,14 +40,9 @@ export default function HostelManagementPage() {
       return {
         tabItems: [
           { title: "Hall Management" },
-          { title: "Staff Assignment" },
-          { title: "Batch Allocation" },
+          { title: "Hostel Allocation" },
         ],
-        tabComponents: [
-          HallManagement,
-          StaffAssignment,
-          RoomAllocationManagement,
-        ],
+        tabComponents: [HallManagement, AccommodationAllotment],
       };
     }
 
@@ -55,26 +50,24 @@ export default function HostelManagementPage() {
     if (userRole === "caretaker") {
       return {
         tabItems: [
-          { title: "Halls" },
           { title: "Guest Bookings" },
           { title: "Notice Board" },
           { title: "Leave Requests" },
           { title: "Complaints" },
           { title: "Fines" },
           { title: "Inventory" },
-          { title: "Rooms" },
           { title: "Attendance" },
+          { title: "Hostel Allocation" },
         ],
         tabComponents: [
-          HallManagement,
           GuestRoomBookings,
           NoticeBoard,
           LeaveManagement,
           ComplaintManagement,
           FineManagement,
           InventoryManagement,
-          RoomAllocationManagement,
           AttendanceManagement,
+          AccommodationAllotment,
         ],
       };
     }
@@ -89,6 +82,7 @@ export default function HostelManagementPage() {
           { title: "Complaints" },
           { title: "Fines" },
           { title: "Attendance" },
+          { title: "Hostel Allocation" },
         ],
         tabComponents: [
           GuestRoomBookings,
@@ -97,6 +91,7 @@ export default function HostelManagementPage() {
           ComplaintManagement,
           FineManagement,
           AttendanceManagement,
+          AccommodationAllotment,
         ],
       };
     }
@@ -109,7 +104,7 @@ export default function HostelManagementPage() {
         { title: "Leave Requests" },
         { title: "Complaints" },
         { title: "Fines" },
-        { title: "Room Allocation" },
+        { title: "Hostel Allocation" },
       ],
       tabComponents: [
         GuestRoomBookings,
@@ -117,7 +112,7 @@ export default function HostelManagementPage() {
         LeaveManagement,
         ComplaintManagement,
         FineManagement,
-        RoomAllocationManagement,
+        AccommodationAllotment,
       ],
     };
   };
@@ -134,21 +129,27 @@ export default function HostelManagementPage() {
     tabComponents[parseInt(activeTab, 10)] || tabComponents[0];
 
   return (
-    <Flex direction="column" gap="md">
-      <CustomBreadcrumbs />
-      {userRole === "super_admin" && (
-        <Alert icon={<IconAlertCircle />} color="blue" title="Super Admin Mode">
-          You have access to hostel management administrative functions only:
-          Hall Creation, Warden/Caretaker Assignment, and Batch Allocation.
-        </Alert>
-      )}
+    <ModalsProvider>
+      <Flex direction="column" gap="md">
+        <CustomBreadcrumbs />
+        {userRole === "super_admin" && (
+          <Alert
+            icon={<IconAlertCircle />}
+            color="blue"
+            title="Super Admin Mode"
+          >
+            You have access to hostel management administrative functions only:
+            Hall Creation, Warden/Caretaker Assignment, and Batch Allocation.
+          </Alert>
+        )}
 
-      <ModuleTabs
-        tabs={tabItems}
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-      />
-      <ActiveComponent />
-    </Flex>
+        <ModuleTabs
+          tabs={tabItems}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+        />
+        <ActiveComponent userRole={userRole} setActiveTab={setActiveTab} />
+      </Flex>
+    </ModalsProvider>
   );
 }

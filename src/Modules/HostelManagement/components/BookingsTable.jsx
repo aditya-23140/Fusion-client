@@ -86,10 +86,19 @@ function BookingsTable({
 }
 
 BookingsTable.propTypes = {
-  bookings: PropTypes.arrayOf(PropTypes.shape({})).isRequired,
+  bookings: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+      guest_name: PropTypes.string.isRequired,
+      guest_phone: PropTypes.string,
+      status: PropTypes.string.isRequired,
+      arrival_date: PropTypes.string,
+      departure_date: PropTypes.string,
+    }),
+  ).isRequired,
   loading: PropTypes.bool.isRequired,
-  onApprove: PropTypes.func.isRequired,
-  onReject: PropTypes.func.isRequired,
+  onApprove: PropTypes.func,
+  onReject: PropTypes.func,
   showActions: PropTypes.bool,
 };
 

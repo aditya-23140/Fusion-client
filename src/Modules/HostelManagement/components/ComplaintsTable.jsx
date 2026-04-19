@@ -59,7 +59,15 @@ function ComplaintsTable({ complaints, loading }) {
 }
 
 ComplaintsTable.propTypes = {
-  complaints: PropTypes.arrayOf(PropTypes.shape({})).isRequired,
+  complaints: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+      complaint_type: PropTypes.string,
+      description: PropTypes.string,
+      status: PropTypes.string,
+      complaint_date: PropTypes.string,
+    }),
+  ).isRequired,
   loading: PropTypes.bool.isRequired,
 };
 

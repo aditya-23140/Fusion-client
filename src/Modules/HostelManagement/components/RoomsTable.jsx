@@ -9,8 +9,8 @@ import { Badge } from "@mantine/core";
 import DataTable from "./DataTable";
 
 const statusColors = {
-  Booked: "blue",
-  CheckedIn: "green",
+  Occupied: "blue",
+  Reserved: "yellow",
   Available: "teal",
   UnderMaintenance: "orange",
 };
@@ -18,16 +18,12 @@ const statusColors = {
 function RoomsTable({ rooms, loading }) {
   const columns = [
     { key: "id", label: "ID" },
-    { key: "room_no", label: "Room No" },
+    { key: "room_number", label: "Room No" },
+    { key: "floor", label: "Floor" },
+    { key: "capacity", label: "Capacity" },
+    { key: "current_occupancy", label: "Occupancy" },
     {
-      key: "hall_name",
-      label: "Hall",
-      render: (_, row) => row.hall?.hall_name || "-",
-    },
-    { key: "room_cap", label: "Capacity" },
-    { key: "current_occupancy", label: "Current Occupancy" },
-    {
-      key: "room_status",
+      key: "status",
       label: "Status",
       render: (value) => (
         <Badge color={statusColors[value] || "gray"}>{value}</Badge>
@@ -46,7 +42,16 @@ function RoomsTable({ rooms, loading }) {
 }
 
 RoomsTable.propTypes = {
-  rooms: PropTypes.arrayOf(PropTypes.shape({})).isRequired,
+  rooms: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+      room_number: PropTypes.string.isRequired,
+      floor: PropTypes.number,
+      capacity: PropTypes.number,
+      current_occupancy: PropTypes.number,
+      status: PropTypes.string,
+    }),
+  ).isRequired,
   loading: PropTypes.bool.isRequired,
 };
 

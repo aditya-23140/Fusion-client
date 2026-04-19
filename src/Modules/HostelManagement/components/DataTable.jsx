@@ -58,8 +58,18 @@ function DataTable({
 }
 
 DataTable.propTypes = {
-  columns: PropTypes.arrayOf(PropTypes.shape({})).isRequired,
-  data: PropTypes.arrayOf(PropTypes.shape({})).isRequired,
+  columns: PropTypes.arrayOf(
+    PropTypes.shape({
+      key: PropTypes.string.isRequired,
+      label: PropTypes.string.isRequired,
+      render: PropTypes.func,
+    }),
+  ).isRequired,
+  data: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    }),
+  ).isRequired,
   loading: PropTypes.bool.isRequired,
   emptyMessage: PropTypes.string,
 };

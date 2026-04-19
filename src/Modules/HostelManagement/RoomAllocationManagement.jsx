@@ -41,6 +41,8 @@ import {
   fetchHalls,
   fetchRoomAllocations,
   createRoomInHall,
+  createRoomAllotment,
+  allocateBatch,
   deleteRoomAllocation,
   requestRoomChange,
   fetchRoomChanges,
@@ -57,8 +59,6 @@ import {
   rejectExtendedStay,
 } from "./api";
 import "@mantine/core/styles.css";
-
-const BASE_URL = "http://127.0.0.1:8000/api/hostel";
 
 export default function RoomAllocationManagement() {
   const userRole = useSelector((state) => state.user.role);
@@ -244,23 +244,16 @@ export default function RoomAllocationManagement() {
   const handleAllocateRoom = async (formData) => {
     try {
       setSubmitting(true);
-      const token = localStorage.getItem("authToken");
-      const response = await fetch(`${BASE_URL}/room-allocations/`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Token ${token}`,
-        },
-        body: JSON.stringify({
-          student: formData.student_id,
-          room: formData.room_id,
-          allocation_date: formData.allocation_date.toISOString().split("T")[0],
-        }),
-      });
 
-      if (!response.ok) {
-        throw new Error("Failed to allocate room");
-      }
+      const payload = {
+        student: formData.student_id,
+        room: formData.room_id,
+        allotted_at: formData.allocation_date
+          ? formData.allocation_date.toISOString()
+          : new Date().toISOString(),
+      };
+
+      await createRoomAllotment(payload);
 
       notifications.show({
         title: "Success",
@@ -272,7 +265,10 @@ export default function RoomAllocationManagement() {
     } catch (error) {
       notifications.show({
         title: "Error",
-        message: error.message,
+        message:
+          error.response?.data?.error ||
+          error.message ||
+          "Failed to allocate room",
         color: "red",
       });
     } finally {
@@ -280,46 +276,33 @@ export default function RoomAllocationManagement() {
     }
   };
 
-  const handleBatchAllocation = async (formData) => {
+  const handleBatchAllocation = async (allocationData, hallId) => {
     try {
       setSubmitting(true);
-      const token = localStorage.getItem("authToken");
-      const response = await fetch(
-        `${BASE_URL}/room-allocations/bulk-allocate/`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Token ${token}`,
-          },
-          body: JSON.stringify({
-            academic_batch: formData.academic_batch,
-            hall_id: formData.hall_id,
-            allocation_date: formData.allocation_date
-              .toISOString()
-              .split("T")[0],
-            start_room_number: formData.start_room_number,
-            notes: formData.notes,
-          }),
-        },
-      );
+      const data = {
+        ...allocationData,
+        allocation_date: allocationData.allocation_date
+          ? allocationData.allocation_date.toISOString().split("T")[0]
+          : new Date().toISOString().split("T")[0],
+      };
 
-      if (!response.ok) {
-        throw new Error("Failed to perform batch allocation");
-      }
+      const result = await allocateBatch(hallId, data);
 
-      const result = await response.json();
       notifications.show({
         title: "Success",
-        message: `${result.allocated_count || 0} students allocated successfully`,
+        message: `${result.allocated_count || result.count || 0} students allocated successfully`,
         color: "green",
       });
       setBatchAllocationOpen(false);
       loadData();
     } catch (error) {
+      console.error("Batch allocation error:", error);
       notifications.show({
         title: "Error",
-        message: error.message,
+        message:
+          error.response?.data?.error ||
+          error.message ||
+          "Failed to allocate batch",
         color: "red",
       });
     } finally {
@@ -916,15 +899,25 @@ export default function RoomAllocationManagement() {
                           <Table.Td>
                             {allocation.student_name || "N/A"}
                           </Table.Td>
-                          <Table.Td>{allocation.hall_name || "N/A"}</Table.Td>
-                          <Table.Td>{allocation.room_number || "N/A"}</Table.Td>
+                          <Table.Td>{allocation.hostel_name || "N/A"}</Table.Td>
                           <Table.Td>
-                            <Badge>{allocation.status || "unknown"}</Badge>
+                            {allocation.room?.room_number || "N/A"}
                           </Table.Td>
                           <Table.Td>
-                            {allocation.allocation_date || "-"}
+                            <Badge
+                              color={allocation.is_active ? "green" : "gray"}
+                            >
+                              {allocation.is_active ? "active" : "inactive"}
+                            </Badge>
                           </Table.Td>
-                          <Table.Td>{allocation.release_date || "-"}</Table.Td>
+                          <Table.Td>
+                            {allocation.allotted_at
+                              ? new Date(
+                                  allocation.allotted_at,
+                                ).toLocaleDateString()
+                              : "-"}
+                          </Table.Td>
+                          <Table.Td>{allocation.vacated_at || "-"}</Table.Td>
                           {userRole === "super_admin" && (
                             <Table.Td>
                               <Tooltip label="Remove allocation">

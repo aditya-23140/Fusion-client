@@ -69,10 +69,17 @@ function InventoryTable({
 }
 
 InventoryTable.propTypes = {
-  inventory: PropTypes.arrayOf(PropTypes.shape({})).isRequired,
+  inventory: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+      item_name: PropTypes.string.isRequired,
+      quantity: PropTypes.number,
+      item_type: PropTypes.string,
+    }),
+  ).isRequired,
   loading: PropTypes.bool.isRequired,
-  onEdit: PropTypes.func.isRequired,
-  onDelete: PropTypes.func.isRequired,
+  onEdit: PropTypes.func,
+  onDelete: PropTypes.func,
   showActions: PropTypes.bool,
 };
 

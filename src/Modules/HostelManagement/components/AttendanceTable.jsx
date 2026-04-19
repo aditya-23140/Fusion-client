@@ -45,7 +45,14 @@ function AttendanceTable({ attendance, loading }) {
 }
 
 AttendanceTable.propTypes = {
-  attendance: PropTypes.arrayOf(PropTypes.shape({})).isRequired,
+  attendance: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+      student_id: PropTypes.string,
+      date: PropTypes.string,
+      present: PropTypes.bool,
+    }),
+  ).isRequired,
   loading: PropTypes.bool.isRequired,
 };
 export default AttendanceTable;

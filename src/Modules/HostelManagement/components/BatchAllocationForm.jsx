@@ -51,7 +51,23 @@ export default function BatchAllocationForm({
 
   const handleSubmit = async (values) => {
     try {
-      await onSubmit(values);
+      const selectedBatch = batches.find(
+        (b) => String(b.id) === values.academic_batch,
+      );
+      if (!selectedBatch) {
+        throw new Error("Selected batch not found");
+      }
+
+      // Map batch info to foundational backend logic parameters
+      const allocationData = {
+        programme_category: selectedBatch.programme_level || "UG",
+        admission_year: selectedBatch.year || new Date().getFullYear(),
+        gender: selectedBatch.gender || "M", // Fallback to M if not specified
+        notes: values.notes,
+        allocation_date: values.allocation_date,
+      };
+
+      await onSubmit(allocationData, values.hall_id);
       form.reset();
     } catch (error) {
       console.error("Form submission error:", error);

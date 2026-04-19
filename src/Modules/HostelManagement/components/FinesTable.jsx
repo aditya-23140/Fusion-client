@@ -84,10 +84,18 @@ function FinesTable({ fines, loading, onEdit, onDelete, showActions = false }) {
 }
 
 FinesTable.propTypes = {
-  fines: PropTypes.arrayOf(PropTypes.shape({})).isRequired,
+  fines: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+      fine_type: PropTypes.string,
+      amount: PropTypes.number,
+      status: PropTypes.string,
+      date_issued: PropTypes.string,
+    }),
+  ).isRequired,
   loading: PropTypes.bool.isRequired,
-  onEdit: PropTypes.func.isRequired,
-  onDelete: PropTypes.func.isRequired,
+  onEdit: PropTypes.func,
+  onDelete: PropTypes.func,
   showActions: PropTypes.bool,
 };
 
