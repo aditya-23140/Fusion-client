@@ -23,7 +23,6 @@ import {
   Table,
   ScrollArea,
   TextInput,
-  Paper,
   ActionIcon,
   Tooltip,
   Modal,
@@ -194,123 +193,121 @@ export default function FineManagement() {
           </Tabs.List>
 
           <Tabs.Panel value="list" pt="md">
-            <Paper withBorder p="md" radius="md">
-              <Stack>
-                <TextInput
-                  placeholder="Search by student or ID..."
-                  leftSection={<IconSearch size={16} />}
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.currentTarget.value)}
-                />
-                <ScrollArea h={500}>
-                  <Table verticalSpacing="sm">
-                    <Table.Thead>
-                      <Table.Tr>
-                        <Table.Th>ID</Table.Th>
-                        {!isStudent && <Table.Th>Student</Table.Th>}
-                        <Table.Th>Category</Table.Th>
-                        <Table.Th>Amount</Table.Th>
-                        <Table.Th>Date Imposed</Table.Th>
-                        <Table.Th>Status</Table.Th>
-                        <Table.Th>Actions</Table.Th>
-                      </Table.Tr>
-                    </Table.Thead>
-                    <Table.Tbody>
-                      {filteredFines.map((f) => (
-                        <Table.Tr key={f.id}>
-                          <Table.Td>
-                            <Text
-                              size="xs"
-                              fw={700}
-                              variant="gradient"
-                              gradient={{ from: "blue", to: "cyan" }}
-                            >
-                              {f.fine_uid}
-                            </Text>
-                          </Table.Td>
-                          {!isStudent && (
-                            <Table.Td>
-                              <Group gap="xs">
-                                <IconUser size={14} />
-                                <div>
-                                  <Text size="sm" fw={500}>
-                                    {f.student_name}
-                                  </Text>
-                                  <Text size="xs" c="dimmed">
-                                    {f.student_roll}
-                                  </Text>
-                                </div>
-                              </Group>
-                            </Table.Td>
-                          )}
-                          <Table.Td>
-                            <Badge variant="dot" size="sm">
-                              {f.category.replace("Violation", "")}
-                            </Badge>
-                          </Table.Td>
-                          <Table.Td>
-                            <Text size="sm" fw={700} c="blue">
-                              ₹{f.amount}
-                            </Text>
-                          </Table.Td>
+            <Stack>
+              <TextInput
+                placeholder="Search by student or ID..."
+                leftSection={<IconSearch size={16} />}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.currentTarget.value)}
+              />
+              <ScrollArea h={500}>
+                <Table verticalSpacing="sm">
+                  <Table.Thead>
+                    <Table.Tr>
+                      <Table.Th>ID</Table.Th>
+                      {!isStudent && <Table.Th>Student</Table.Th>}
+                      <Table.Th>Category</Table.Th>
+                      <Table.Th>Amount</Table.Th>
+                      <Table.Th>Date Imposed</Table.Th>
+                      <Table.Th>Status</Table.Th>
+                      <Table.Th>Actions</Table.Th>
+                    </Table.Tr>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {filteredFines.map((f) => (
+                      <Table.Tr key={f.id}>
+                        <Table.Td>
+                          <Text
+                            size="xs"
+                            fw={700}
+                            variant="gradient"
+                            gradient={{ from: "blue", to: "cyan" }}
+                          >
+                            {f.fine_uid}
+                          </Text>
+                        </Table.Td>
+                        {!isStudent && (
                           <Table.Td>
                             <Group gap="xs">
-                              <IconCalendar size={14} c="dimmed" />
-                              <Text size="xs">
-                                {new Date(f.imposed_date).toLocaleDateString()}
-                              </Text>
+                              <IconUser size={14} />
+                              <div>
+                                <Text size="sm" fw={500}>
+                                  {f.student_name}
+                                </Text>
+                                <Text size="xs" c="dimmed">
+                                  {f.student_roll}
+                                </Text>
+                              </div>
                             </Group>
                           </Table.Td>
-                          <Table.Td>
-                            <Badge
-                              color={
-                                f.status === "paid"
-                                  ? "green"
-                                  : f.status === "waived"
-                                    ? "gray"
-                                    : "red"
-                              }
-                              variant="filled"
-                              size="sm"
-                            >
-                              {f.status}
-                            </Badge>
-                          </Table.Td>
-                          <Table.Td>
-                            <Group gap={8}>
-                              <Tooltip label="View Details">
+                        )}
+                        <Table.Td>
+                          <Badge variant="dot" size="sm">
+                            {f.category.replace("Violation", "")}
+                          </Badge>
+                        </Table.Td>
+                        <Table.Td>
+                          <Text size="sm" fw={700} c="blue">
+                            ₹{f.amount}
+                          </Text>
+                        </Table.Td>
+                        <Table.Td>
+                          <Group gap="xs">
+                            <IconCalendar size={14} c="dimmed" />
+                            <Text size="xs">
+                              {new Date(f.imposed_date).toLocaleDateString()}
+                            </Text>
+                          </Group>
+                        </Table.Td>
+                        <Table.Td>
+                          <Badge
+                            color={
+                              f.status === "paid"
+                                ? "green"
+                                : f.status === "waived"
+                                  ? "gray"
+                                  : "red"
+                            }
+                            variant="filled"
+                            size="sm"
+                          >
+                            {f.status}
+                          </Badge>
+                        </Table.Td>
+                        <Table.Td>
+                          <Group gap={8}>
+                            <Tooltip label="View Details">
+                              <ActionIcon
+                                variant="subtle"
+                                color="blue"
+                                onClick={() => {
+                                  setSelectedFine(f);
+                                  setDetailsOpen(true);
+                                }}
+                              >
+                                <IconEye size={18} />
+                              </ActionIcon>
+                            </Tooltip>
+
+                            {isStaff && f.status === "pending" && (
+                              <Tooltip label="Resolve / Mark Paid">
                                 <ActionIcon
-                                  variant="subtle"
-                                  color="blue"
-                                  onClick={() => {
-                                    setSelectedFine(f);
-                                    setDetailsOpen(true);
-                                  }}
+                                  color="green"
+                                  variant="light"
+                                  onClick={() => handleMarkPaid(f.id)}
                                 >
-                                  <IconEye size={18} />
+                                  <IconCheck size={18} />
                                 </ActionIcon>
                               </Tooltip>
-
-                              {isStaff && f.status === "pending" && (
-                                <Tooltip label="Resolve / Mark Paid">
-                                  <ActionIcon
-                                    color="green"
-                                    variant="light"
-                                    onClick={() => handleMarkPaid(f.id)}
-                                  >
-                                    <IconCheck size={18} />
-                                  </ActionIcon>
-                                </Tooltip>
-                              )}
-                            </Group>
-                          </Table.Td>
-                        </Table.Tr>
-                      ))}
-                    </Table.Tbody>
-                  </Table>
-                </ScrollArea>
-              </Stack>
-            </Paper>
+                            )}
+                          </Group>
+                        </Table.Td>
+                      </Table.Tr>
+                    ))}
+                  </Table.Tbody>
+                </Table>
+              </ScrollArea>
+            </Stack>
           </Tabs.Panel>
         </Tabs>
       </Stack>
