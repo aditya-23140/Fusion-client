@@ -1,10 +1,5 @@
-/**
- * GuestRoomBookingForm - Micro Component
- * Form for submitting guest room booking requests
- * Dumb component - receives data and callbacks from parent
- */
-
-import React from "react";
+/* eslint-disable react/jsx-props-no-spreading */
+import React, { useEffect } from "react";
 import PropTypes from "prop-types";
 import {
   Modal,
@@ -15,10 +10,7 @@ import {
   Stack,
   Text,
   Alert,
-  NumberInput,
-  Select,
   SimpleGrid,
-  Divider,
 } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
@@ -30,6 +22,12 @@ export default function GuestRoomBookingForm({
   onSubmit,
   loading = false,
 }) {
+  useEffect(() => {
+    if (opened) {
+      // Intentionally left empty. Hostel is auto-assigned by the backend based on student's current residence.
+    }
+  }, [opened]);
+
   const form = useForm({
     initialValues: {
       guest_name: "",
@@ -37,254 +35,133 @@ export default function GuestRoomBookingForm({
       guest_phone: "",
       guest_address: "",
       nationality: "",
-      arrival_date: null,
-      departure_date: null,
-      purpose: "",
-      total_guests: 1,
-      rooms_required: 1,
-      room_type: "single",
+      check_in_date: null,
+      check_out_date: null,
+      visit_purpose: "",
     },
     validate: {
-      guest_name: (value) =>
-        value && value.length >= 3
-          ? null
-          : "Name must be at least 3 characters",
-      guest_email: (value) => {
-        if (!value) return "Email is required";
-        return /^\S+@\S+$/.test(value) ? null : "Invalid email address";
-      },
-      guest_phone: (value) =>
-        value && value.length >= 10
-          ? null
-          : "Phone must be at least 10 characters",
-      guest_address: (value) =>
-        value && value.length >= 5
-          ? null
-          : "Address must be at least 5 characters",
-      arrival_date: (value) => (value ? null : "Arrival date is required"),
-      departure_date: (value, values) => {
-        if (!value) return "Departure date is required";
-        if (value <= values.arrival_date)
-          return "Departure must be after arrival";
+      guest_name: (val) => (val && val.length >= 3 ? null : "Name too short"),
+      guest_phone: (val) =>
+        val && val.length >= 10 ? null : "Valid phone required",
+      guest_address: (val) =>
+        val && val.trim().length >= 5 ? null : "Address is required",
+      nationality: (val) =>
+        val && val.trim().length > 0 ? null : "Nationality is required",
+      check_in_date: (val) => (val ? null : "Check-in date required"),
+      check_out_date: (val, values) => {
+        if (!val) return "Check-out date required";
+        if (values.check_in_date && val <= values.check_in_date)
+          return "Must be after check-in";
         return null;
       },
-      purpose: (value) =>
-        value && value.length >= 10
-          ? null
-          : "Purpose must be at least 10 characters",
-      total_guests: (value) => {
-        if (!value || value <= 0) return "Total guests must be greater than 0";
-        if (value > 100) return "Total guests cannot exceed 100";
-        return null;
-      },
-      rooms_required: (value) => {
-        if (!value || value <= 0)
-          return "Rooms required must be greater than 0";
-        return null;
-      },
+      visit_purpose: (val) =>
+        val && val.length >= 10 ? null : "Purpose must be at least 10 chars",
     },
   });
 
   const handleSubmit = async (values) => {
-    try {
-      await onSubmit(values);
+    const payload = {
+      guest_name: values.guest_name,
+      guest_email: values.guest_email,
+      guest_phone: values.guest_phone,
+      visit_purpose: values.visit_purpose,
+      check_in_date: values.check_in_date.toISOString().split("T")[0],
+      check_out_date: values.check_out_date.toISOString().split("T")[0],
+      guest_address: values.guest_address,
+      nationality: values.nationality,
+    };
+    const success = await onSubmit(payload);
+    if (success) {
       form.reset();
-    } catch (error) {
-      console.error("Form submission error:", error);
     }
   };
-
-  const minDepartureDate = form.values.arrival_date
-    ? new Date(form.values.arrival_date)
-    : new Date();
 
   return (
     <Modal
       opened={opened}
       onClose={onClose}
-      title="Book Guest Room"
+      title={<Text fw={600}>Request Guest Room Booking</Text>}
       size="lg"
       centered
-      scrollAreaComponent={Modal.ScrollArea}
     >
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Stack gap="md">
-          <Alert
-            icon={<IconAlertCircle />}
-            color="blue"
-            title="Guest Information"
-          >
-            <Text size="sm">
-              Please provide complete details of your guest and booking
-              preferences
-            </Text>
+          <Alert icon={<IconAlertCircle />} color="blue" variant="light">
+            Bookings are subject to caretaker approval and room availability.
+            Automated charges will apply based on the hostel's nightly rate.
+            Your current assigned hostel will be automatically used.
           </Alert>
 
-          {/* Guest Basic Information */}
-          <div>
-            <Text fw={600} size="sm" mb="sm">
-              Guest Details
-            </Text>
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-              <TextInput
-                label="Guest Name"
-                placeholder="Full name of guest"
-                value={form.values.guest_name}
-                onChange={(e) =>
-                  form.setFieldValue("guest_name", e.currentTarget.value)
-                }
-                error={form.errors.guest_name}
-              />
-              <TextInput
-                label="Email"
-                placeholder="guest@example.com"
-                type="email"
-                value={form.values.guest_email}
-                onChange={(e) =>
-                  form.setFieldValue("guest_email", e.currentTarget.value)
-                }
-                error={form.errors.guest_email}
-              />
-              <TextInput
-                label="Phone"
-                placeholder="+91 XXXXXXXXXX"
-                value={form.values.guest_phone}
-                onChange={(e) =>
-                  form.setFieldValue("guest_phone", e.currentTarget.value)
-                }
-                error={form.errors.guest_phone}
-              />
-              <TextInput
-                label="Nationality"
-                placeholder="e.g., Indian"
-                value={form.values.nationality}
-                onChange={(e) =>
-                  form.setFieldValue("nationality", e.currentTarget.value)
-                }
-              />
-            </SimpleGrid>
-          </div>
+          <SimpleGrid cols={2}>
+            <TextInput
+              label="Guest Name"
+              placeholder="Full name"
+              {...form.getInputProps("guest_name")}
+              required
+            />
+            <TextInput
+              label="Guest Phone"
+              placeholder="10-digit number"
+              {...form.getInputProps("guest_phone")}
+              required
+            />
+          </SimpleGrid>
 
-          <TextInput
+          <SimpleGrid cols={2}>
+            <TextInput
+              label="Guest Email (Optional)"
+              placeholder="guest@example.com"
+              {...form.getInputProps("guest_email")}
+            />
+            <TextInput
+              label="Nationality"
+              placeholder="e.g. Indian"
+              {...form.getInputProps("nationality")}
+              required
+            />
+          </SimpleGrid>
+
+          <Textarea
             label="Guest Address"
-            placeholder="Full address of the guest"
-            value={form.values.guest_address}
-            onChange={(e) =>
-              form.setFieldValue("guest_address", e.currentTarget.value)
-            }
-            error={form.errors.guest_address}
+            placeholder="Full Residential Address"
+            minRows={2}
+            {...form.getInputProps("guest_address")}
+            required
           />
 
-          <Divider />
-
-          {/* Booking Dates */}
-          <div>
-            <Text fw={600} size="sm" mb="sm">
-              Booking Duration
-            </Text>
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-              <div>
-                <DatePickerInput
-                  label="Arrival Date"
-                  placeholder="Select date"
-                  minDate={new Date()}
-                  value={form.values.arrival_date}
-                  onChange={(value) =>
-                    form.setFieldValue("arrival_date", value)
-                  }
-                  styles={{
-                    month: { tableLayout: "auto" },
-                  }}
-                  error={form.errors.arrival_date}
-                  withAsterisk
-                />
-              </div>
-
-              <div>
-                <DatePickerInput
-                  label="Departure Date"
-                  placeholder="Select date"
-                  minDate={minDepartureDate}
-                  value={form.values.departure_date}
-                  onChange={(value) =>
-                    form.setFieldValue("departure_date", value)
-                  }
-                  styles={{
-                    month: { tableLayout: "auto" },
-                  }}
-                  error={form.errors.departure_date}
-                  withAsterisk
-                />
-              </div>
-            </SimpleGrid>
-          </div>
-
-          <Divider />
-
-          {/* Booking Details */}
-          <div>
-            <Text fw={600} size="sm" mb="sm">
-              Room & Guest Details
-            </Text>
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-              <NumberInput
-                label="Total Guests"
-                placeholder="Number of guests"
-                min={1}
-                max={100}
-                value={form.values.total_guests}
-                onChange={(value) => form.setFieldValue("total_guests", value)}
-                error={form.errors.total_guests}
-              />
-              <NumberInput
-                label="Rooms Required"
-                placeholder="Number of rooms needed"
-                min={1}
-                value={form.values.rooms_required}
-                onChange={(value) =>
-                  form.setFieldValue("rooms_required", value)
-                }
-                error={form.errors.rooms_required}
-              />
-
-              <Select
-                label="Room Type"
-                placeholder="Select room type"
-                value={form.values.room_type}
-                onChange={(value) => form.setFieldValue("room_type", value)}
-                data={[
-                  { value: "single", label: "Single" },
-                  { value: "double", label: "Double" },
-                  { value: "triple", label: "Triple" },
-                ]}
-              />
-            </SimpleGrid>
-          </div>
-
-          <Divider />
-
-          {/* Purpose */}
-          <div>
-            <Text fw={600} size="sm" mb="sm">
-              Purpose of Visit
-            </Text>
-            <Textarea
-              placeholder="Why is the guest visiting? (minimum 10 characters)"
-              minRows={3}
-              value={form.values.purpose}
-              onChange={(e) =>
-                form.setFieldValue("purpose", e.currentTarget.value)
-              }
-              error={form.errors.purpose}
+          <SimpleGrid cols={2}>
+            <DatePickerInput
+              label="Check-In Date"
+              placeholder="Arrival"
+              minDate={new Date()}
+              {...form.getInputProps("check_in_date")}
+              popoverProps={{ width: "300" }}
+              required
             />
-          </div>
+            <DatePickerInput
+              label="Check-Out Date"
+              placeholder="Departure"
+              minDate={form.values.check_in_date || new Date()}
+              {...form.getInputProps("check_out_date")}
+              popoverProps={{ width: "300" }}
+              required
+            />
+          </SimpleGrid>
 
-          <Group justify="flex-end" mt="lg">
-            <Button variant="default" onClick={onClose}>
+          <Textarea
+            label="Purpose of Visit"
+            placeholder="Min. 10 characters description..."
+            minRows={3}
+            {...form.getInputProps("visit_purpose")}
+            required
+          />
+
+          <Group justify="flex-end" mt="md">
+            <Button variant="subtle" onClick={onClose} disabled={loading}>
               Cancel
             </Button>
             <Button type="submit" loading={loading}>
-              Book Room
+              Submit Request
             </Button>
           </Group>
         </Stack>

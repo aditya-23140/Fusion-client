@@ -18,6 +18,7 @@ import {
   Center,
   ScrollArea,
   Divider,
+  Container,
 } from "@mantine/core";
 import {
   IconPlus,
@@ -45,7 +46,8 @@ import {
 } from "./api";
 
 // Helper Component for Consistent Empty States
-function BoardEmptyState({ title, description, icon: Icon = IconLayoutGrid }) {
+function BoardEmptyState({ title, description, icon: Icon }) {
+  const PlaceholderIcon = Icon || IconLayoutGrid;
   return (
     <Center py={100} px="md">
       <Stack align="center" gap="md">
@@ -57,7 +59,7 @@ function BoardEmptyState({ title, description, icon: Icon = IconLayoutGrid }) {
             color: "var(--mantine-color-blue-6)",
           }}
         >
-          <Icon size={48} stroke={1.5} />
+          <PlaceholderIcon size={48} stroke={1.5} />
         </div>
         <Stack align="center" gap={4}>
           <Text fw={700} size="xl" ta="center">
@@ -207,15 +209,17 @@ export default function NoticeBoard() {
 
   if (loading && !notices.length) {
     return (
-      <Center style={{ height: "60vh" }}>
-        <Loader size="lg" variant="dots" />
-      </Center>
+      <Container size={1200}>
+        <Center style={{ height: "60vh" }}>
+          <Loader size="lg" variant="dots" />
+        </Center>
+      </Container>
     );
   }
 
   return (
-    <Stack gap="xl">
-      <Stack>
+    <Container size={1200} p={0}>
+      <Stack gap="xl">
         <Group justify="space-between" align="flex-end">
           <Stack gap={0}>
             <Title order={1} fw={800} style={{ letterSpacing: "-1px" }}>
@@ -404,6 +408,6 @@ export default function NoticeBoard() {
           </ScrollArea.Autosize>
         )}
       </Modal>
-    </Stack>
+    </Container>
   );
 }

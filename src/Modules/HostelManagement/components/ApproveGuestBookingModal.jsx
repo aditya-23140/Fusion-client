@@ -1,9 +1,3 @@
-/**
- * ApproveGuestBookingModal - Micro Component
- * Modal for staff to approve guest room bookings with room assignment
- * Fetches available guest rooms in caretaker's hall and assigns with remarks
- */
-
 import React, { useState, useEffect, useCallback } from "react";
 import PropTypes from "prop-types";
 import {
@@ -16,13 +10,14 @@ import {
   Textarea,
   Alert,
   Loader,
-  Badge,
   SimpleGrid,
   Divider,
+  SegmentedControl,
+  Card,
 } from "@mantine/core";
-import { IconAlertCircle } from "@tabler/icons-react";
+import { IconAlertCircle, IconCheck, IconX } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
-import { fetchRoomsInHall, approveGuestBooking } from "../api";
+import { fetchGuestRoomRegistry, approveGuestBooking } from "../api";
 
 export default function ApproveGuestBookingModal({
   opened,
@@ -37,52 +32,45 @@ export default function ApproveGuestBookingModal({
   const [loading, setLoading] = useState(false);
   const [roomsLoading, setRoomsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [decision, setDecision] = useState("approved");
 
-  const loadAvailableRooms = useCallback(async () => {
+  const loadAvailableGuestRooms = useCallback(async () => {
     try {
       setRoomsLoading(true);
       setError(null);
-      const roomsData = await fetchRoomsInHall(hallId);
+      // Fetch only designated guest rooms that are NOT occupied
+      const registryData = await fetchGuestRoomRegistry({ hall_id: hallId });
 
-      // Filter for available guest rooms (not currently occupied and capacity allows)
-      const availableRooms = roomsData
-        .filter((room) => room.status === "available" || room.is_vacant)
-        .map((room) => ({
-          value: room.id.toString(),
-          label: `${room.room_number} (${room.room_type}) - Cap: ${room.capacity}`,
-          room,
+      const availableRooms = registryData
+        .filter((item) => !item.is_occupied)
+        .map((item) => ({
+          value: item.id.toString(),
+          label: `Room ${item.room_detail.room_number} (Floor ${item.room_detail.floor})`,
         }));
 
       setRooms(availableRooms);
 
       if (availableRooms.length === 0) {
         setError(
-          "No available guest rooms in this hall for the booking period.",
+          "No vacant Guest Rooms found in registry. Please add rooms to the Guest Registry first.",
         );
       }
     } catch (err) {
-      console.error("Failed to fetch rooms:", err);
-      setError("Failed to load available rooms. Please try again.");
-      notifications.show({
-        title: "Error",
-        message: "Failed to load available rooms",
-        color: "red",
-      });
+      setError("Failed to load guest rooms");
     } finally {
       setRoomsLoading(false);
     }
   }, [hallId]);
 
-  // Fetch available rooms when modal opens
   useEffect(() => {
-    if (opened && hallId && booking) {
-      loadAvailableRooms();
+    if (opened && hallId && booking && decision === "approved") {
+      loadAvailableGuestRooms();
     }
-  }, [opened, hallId, booking]);
+  }, [opened, hallId, booking, decision]);
 
-  const handleApprove = async () => {
+  const handleSubmit = async () => {
     try {
-      if (!selectedRoom) {
+      if (decision === "approved" && !selectedRoom) {
         notifications.show({
           title: "Error",
           message: "Please select a room",
@@ -91,37 +79,27 @@ export default function ApproveGuestBookingModal({
         return;
       }
 
-      if (remarks.trim().length < 5) {
-        notifications.show({
-          title: "Error",
-          message: "Please provide remarks (at least 5 characters)",
-          color: "red",
-        });
-        return;
-      }
-
       setLoading(true);
-
-      const approvalData = {
-        guest_room_id: parseInt(selectedRoom, 10),
+      const payload = {
+        decision,
         remarks: remarks.trim(),
+        room_id: selectedRoom ? parseInt(selectedRoom, 10) : null,
       };
 
-      await approveGuestBooking(booking.id, approvalData);
+      await approveGuestBooking(booking.id, payload);
 
       notifications.show({
         title: "Success",
-        message: "Guest booking approved successfully",
-        color: "green",
+        message: `Booking ${decision === "approved" ? "approved" : "rejected"} successfully`,
+        color: decision === "approved" ? "green" : "orange",
       });
 
       onApproveSuccess?.();
       onClose();
     } catch (err) {
-      console.error("Failed to approve booking:", err);
       notifications.show({
         title: "Error",
-        message: err.response?.data?.error || "Failed to approve booking",
+        message: err.response?.data?.detail || "Action failed",
         color: "red",
       });
     } finally {
@@ -135,19 +113,15 @@ export default function ApproveGuestBookingModal({
     <Modal
       opened={opened}
       onClose={onClose}
-      title="Approve Guest Room Booking"
+      title={<Text fw={600}>Review Guest Booking Request</Text>}
       size="lg"
       centered
     >
       <Stack gap="md">
-        {/* Booking Summary */}
-        <div>
-          <Text fw={600} size="sm" mb="xs">
-            Booking Details
-          </Text>
-          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+        <Card withBorder p="md" bg="gray.0">
+          <SimpleGrid cols={2}>
             <div>
-              <Text size="xs" c="dimmed">
+              <Text size="xs" color="dimmed">
                 Guest Name
               </Text>
               <Text size="sm" fw={500}>
@@ -155,108 +129,93 @@ export default function ApproveGuestBookingModal({
               </Text>
             </div>
             <div>
-              <Text size="xs" c="dimmed">
-                Contact
+              <Text size="xs" color="dimmed">
+                Stay Dates
               </Text>
               <Text size="sm" fw={500}>
-                {booking.guest_phone}
+                {booking.check_in_date} to {booking.check_out_date}
               </Text>
             </div>
             <div>
-              <Text size="xs" c="dimmed">
-                Arrival Date
-              </Text>
-              <Text size="sm" fw={500}>
-                {new Date(booking.arrival_date).toLocaleDateString()}
-              </Text>
-            </div>
-            <div>
-              <Text size="xs" c="dimmed">
-                Departure Date
-              </Text>
-              <Text size="sm" fw={500}>
-                {new Date(booking.departure_date).toLocaleDateString()}
-              </Text>
-            </div>
-            <div>
-              <Text size="xs" c="dimmed">
-                Total Guests
-              </Text>
-              <Badge>{booking.total_guests}</Badge>
-            </div>
-            <div>
-              <Text size="xs" c="dimmed">
+              <Text size="xs" color="dimmed">
                 Purpose
               </Text>
-              <Text size="sm" fw={500}>
-                {booking.purpose.substring(0, 30)}...
+              <Text size="sm">{booking.visit_purpose}</Text>
+            </div>
+            <div>
+              <Text size="xs" color="dimmed">
+                Estimated Charge
+              </Text>
+              <Text size="sm" fw={700} color="blue">
+                ₹{booking.total_charges}
               </Text>
             </div>
           </SimpleGrid>
-        </div>
+        </Card>
 
-        <Divider />
+        <SegmentedControl
+          value={decision}
+          onChange={setDecision}
+          data={[
+            { label: "Approve", value: "approved" },
+            { label: "Reject", value: "rejected" },
+          ]}
+          color={decision === "approved" ? "green" : "red"}
+          fullWidth
+        />
 
-        {/* Room Assignment Section */}
-        <div>
-          <Text fw={600} size="sm" mb="xs">
-            Assign Guest Room
-          </Text>
+        {decision === "approved" && (
+          <>
+            <Divider label="Room Assignment" labelPosition="center" />
+            {roomsLoading ? (
+              <Group justify="center">
+                <Loader size="sm" />
+              </Group>
+            ) : error ? (
+              <Alert icon={<IconAlertCircle />} color="red">
+                {error}
+              </Alert>
+            ) : (
+              <Select
+                label="Select Guest Room"
+                placeholder="Choose from designated guest rooms"
+                data={rooms}
+                value={selectedRoom}
+                onChange={setSelectedRoom}
+                required
+              />
+            )}
+          </>
+        )}
 
-          {error && (
-            <Alert icon={<IconAlertCircle />} color="red" mb="md">
-              {error}
-            </Alert>
-          )}
+        <Textarea
+          label={
+            decision === "approved" ? "Approval Remarks" : "Rejection Reason"
+          }
+          placeholder="Add your comments here..."
+          minRows={3}
+          value={remarks}
+          onChange={(e) => setRemarks(e.target.value)}
+        />
 
-          {roomsLoading ? (
-            <Group justify="center" p="md">
-              <Loader size="sm" />
-              <Text size="sm">Loading available rooms...</Text>
-            </Group>
-          ) : (
-            <Select
-              label="Select Available Room"
-              placeholder="Choose a room for the guest"
-              data={rooms}
-              value={selectedRoom}
-              onChange={setSelectedRoom}
-              disabled={rooms.length === 0 || loading}
-              searchable
-              clearable
-              required
-            />
-          )}
-        </div>
-
-        {/* Remarks Section */}
-        <div>
-          <Textarea
-            label="Approval Remarks"
-            placeholder="Add any remarks or special notes for this booking (minimum 5 characters)"
-            minRows={3}
-            value={remarks}
-            onChange={(e) => setRemarks(e.currentTarget.value)}
-            disabled={loading}
-            required
-          />
-          <Text size="xs" c="dimmed" mt={4}>
-            {remarks.length} characters
-          </Text>
-        </div>
-
-        {/* Action Buttons */}
-        <Group justify="flex-end" gap="xs" mt="lg">
-          <Button variant="default" onClick={onClose} disabled={loading}>
+        <Group justify="flex-end" mt="lg">
+          <Button variant="subtle" onClick={onClose} disabled={loading}>
             Cancel
           </Button>
           <Button
-            color="green"
-            onClick={handleApprove}
+            color={decision === "approved" ? "green" : "red"}
+            leftSection={
+              decision === "approved" ? (
+                <IconCheck size={18} />
+              ) : (
+                <IconX size={18} />
+              )
+            }
+            onClick={handleSubmit}
             loading={loading}
-            disabled={!selectedRoom || remarks.trim().length < 5}
+            disabled={decision === "approved" && !selectedRoom}
           >
-            Approve & Assign Room
+            {decision === "approved" ? "Approve & Assign" : "Reject Booking"}
           </Button>
         </Group>
       </Stack>
@@ -268,14 +227,13 @@ ApproveGuestBookingModal.propTypes = {
   opened: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
   booking: PropTypes.shape({
-    id: PropTypes.number.isRequired,
-    guest_name: PropTypes.string.isRequired,
-    guest_phone: PropTypes.string.isRequired,
-    arrival_date: PropTypes.string.isRequired,
-    departure_date: PropTypes.string.isRequired,
-    total_guests: PropTypes.number.isRequired,
-    purpose: PropTypes.string.isRequired,
+    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    guest_name: PropTypes.string,
+    check_in_date: PropTypes.string,
+    check_out_date: PropTypes.string,
+    visit_purpose: PropTypes.string,
+    total_charges: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   }),
-  hallId: PropTypes.number,
+  hallId: PropTypes.string,
   onApproveSuccess: PropTypes.func,
 };

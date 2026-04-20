@@ -1,6 +1,6 @@
 /**
  * GuestRoomBookings - Thin View
- * Manages guest room bookings
+ * Manages guest room bookings lifecycle, registry, and policies.
  * Orchestrates components and handles state, calls api.js
  */
 
@@ -14,310 +14,397 @@ import {
   Tabs,
   Stack,
   Badge,
+  Container,
+  Text,
+  Center,
+  Select,
 } from "@mantine/core";
-import { IconPlus, IconAlertCircle } from "@tabler/icons-react";
+import {
+  IconPlus,
+  IconAlertCircle,
+  IconBuildingCommunity,
+  IconSettings,
+  IconHistory,
+  IconClock,
+  IconCheck,
+  IconUserCheck,
+} from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import { useSelector } from "react-redux";
+
+// Components
 import GuestBookingCard from "./components/GuestBookingCard";
 import GuestRoomBookingForm from "./components/GuestRoomBookingForm";
 import ApproveGuestBookingModal from "./components/ApproveGuestBookingModal";
+import GuestCheckInModal from "./components/GuestCheckInModal";
+import GuestCheckOutModal from "./components/GuestCheckOutModal";
+import GuestRoomRegistryPanel from "./components/GuestRoomRegistryPanel";
+import GuestRoomPolicyPanel from "./components/GuestRoomPolicyPanel";
+
+// API
 import {
   fetchGuestBookings,
   requestGuestBooking,
-  rejectGuestBooking,
-  checkInGuest,
-  checkOutGuest,
+  fetchHalls,
+  fetchMyAllotment,
 } from "./api";
+
 import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
 
+const MAX_WIDTH = 1200;
+
 export default function GuestRoomBookings() {
   const [bookings, setBookings] = useState([]);
+  const [, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [approveModalOpen, setApproveModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("pending");
+
+  // Modal States
+  const [bookingFormOpen, setBookingFormOpen] = useState(false);
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [checkInModalOpen, setCheckInModalOpen] = useState(false);
+  const [checkOutModalOpen, setCheckOutModalOpen] = useState(false);
+
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  const [activeTab, setActiveTab] = useState("pending");
+  const [hostels, setHostels] = useState([]);
+  const [currentHallId, setCurrentHallId] = useState(null);
+
   const userRole = useSelector((state) => state.user.role);
-  const userHallId = useSelector((state) => state.user.hallId); // Get user's hall
-  const isStaff = userRole === "caretaker" || userRole === "warden";
+  // User selector
+
+  const isCaretaker = userRole === "caretaker";
+  const isWarden = userRole === "warden";
+  const isStaff = isCaretaker || isWarden;
   const isStudent = userRole === "student";
 
   const loadData = useCallback(async () => {
     try {
+      setLoading(true);
       setError(null);
       const bookingsData = await fetchGuestBookings();
       setBookings(bookingsData);
     } catch (err) {
-      setError("Failed to load bookings. Please try again.");
+      setError("Failed to load bookings history.");
       console.error(err);
+    } finally {
+      setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
-  const handleSubmitBooking = async (formData) => {
+
+  // Fetch hall assignment or list based on role
+  useEffect(() => {
+    const fetchRelevantHalls = async () => {
+      try {
+        if (isStudent) {
+          const allotment = await fetchMyAllotment();
+          if (allotment && (allotment.hostel_id || allotment.hostel)) {
+            setCurrentHallId(allotment.hostel_id || allotment.hostel);
+          }
+        } else if (isStaff) {
+          const hallsData = await fetchHalls();
+          const list = Array.isArray(hallsData)
+            ? hallsData
+            : hallsData?.results || [];
+          setHostels(list);
+          if (list.length > 0) {
+            // Default to first hall if none selected
+            setCurrentHallId(list[0].hall_id);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch hall info:", err);
+      }
+    };
+    fetchRelevantHalls();
+  }, [isStudent, isStaff]);
+
+  const handleSubmitRequest = async (payload) => {
     try {
       setSubmitting(true);
-
-      // Transform form data to match API expectations
-      const bookingPayload = {
-        guest_name: formData.guest_name,
-        guest_email: formData.guest_email,
-        guest_phone: formData.guest_phone,
-        guest_address: formData.guest_address,
-        nationality: formData.nationality || "",
-        arrival_date: formData.arrival_date
-          ? formData.arrival_date.toISOString().split("T")[0]
-          : null,
-        departure_date: formData.departure_date
-          ? formData.departure_date.toISOString().split("T")[0]
-          : null,
-        purpose: formData.purpose,
-        total_guests: formData.total_guests || 1,
-        rooms_required: formData.rooms_required || 1,
-        room_type: formData.room_type || "single",
-      };
-
-      // DEBUG: Log payload before sending
-      console.log("🔍 [DEBUG] Guest Booking Payload:", bookingPayload);
-      console.log("📤 Sending to /api/hostel/guest-bookings/");
-
-      await requestGuestBooking(bookingPayload);
+      await requestGuestBooking(payload);
       notifications.show({
-        title: "Success",
-        message: "Guest booking request submitted",
+        title: "Request Submitted",
+        message: "Your guest room booking request has been sent for approval.",
         color: "green",
       });
-      setModalOpen(false);
+      setBookingFormOpen(false);
       loadData();
+      return true;
     } catch (err) {
       notifications.show({
         title: "Error",
-        message: err.response?.data?.error || "Failed to submit booking",
+        message: err.response?.data?.detail || "Failed to submit request",
         color: "red",
       });
+      return false;
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleApprove = async (booking) => {
+  const openReviewModal = (booking) => {
     setSelectedBooking(booking);
-    setApproveModalOpen(true);
+    setReviewModalOpen(true);
   };
 
-  const handleReject = async (booking) => {
-    try {
-      await rejectGuestBooking(booking.id);
-      notifications.show({
-        title: "Success",
-        message: "Booking rejected",
-        color: "green",
-      });
-      loadData();
-    } catch (err) {
-      notifications.show({
-        title: "Error",
-        message: err.response?.data?.error || "Failed to reject",
-        color: "red",
-      });
-    }
+  const openCheckInModal = (booking) => {
+    setSelectedBooking(booking);
+    setCheckInModalOpen(true);
   };
 
-  const handleCheckIn = async (booking) => {
-    try {
-      await checkInGuest(booking.id);
-      notifications.show({
-        title: "Success",
-        message: "Guest checked in",
-        color: "green",
-      });
-      loadData();
-    } catch (err) {
-      notifications.show({
-        title: "Error",
-        message: err.response?.data?.error || "Failed to check in",
-        color: "red",
-      });
-    }
+  const openCheckOutModal = (booking) => {
+    setSelectedBooking(booking);
+    setCheckOutModalOpen(true);
   };
 
-  const handleCheckOut = async (booking) => {
-    try {
-      await checkOutGuest(booking.id);
-      notifications.show({
-        title: "Success",
-        message: "Guest checked out",
-        color: "green",
-      });
-      loadData();
-    } catch (err) {
-      notifications.show({
-        title: "Error",
-        message: err.response?.data?.error || "Failed to check out",
-        color: "red",
-      });
-    }
-  };
+  const renderEmptyState = (msg) => (
+    <Card withBorder py={60} radius="md" style={{ borderStyle: "dashed" }}>
+      <Center>
+        <Stack align="center" gap="xs">
+          <IconHistory size={48} color="var(--mantine-color-gray-4)" />
+          <Text color="dimmed" fw={500}>
+            {msg}
+          </Text>
+        </Stack>
+      </Center>
+    </Card>
+  );
 
-  const pendingBookings = bookings.filter((b) => b.status === "pending");
-  const approvedBookings = bookings.filter((b) => b.status === "approved");
-  const checkedInBookings = bookings.filter((b) => b.status === "checked_in");
-  const completedBookings = bookings.filter((b) => b.status === "checked_out");
+  const filterBookings = (status) => {
+    const statusMap = {
+      pending: "Pending",
+      approved: "Approved",
+      checked_in: "CheckedIn",
+    };
+    return bookings.filter(
+      (b) => b.status === statusMap[status] || b.status === status,
+    );
+  };
 
   return (
-    <Stack gap="lg">
-      <Group justify="space-between" align="center">
-        <Title order={2}>Guest Room Bookings</Title>
-        {isStudent && (
-          <Button
-            leftSection={<IconPlus size={18} />}
-            onClick={() => setModalOpen(true)}
-          >
-            Book Room
-          </Button>
+    <Container size={MAX_WIDTH} p={0} style={{ width: "100%" }}>
+      <Stack gap="xl">
+        <Group justify="space-between" align="center">
+          <Stack gap={0}>
+            <Title order={2}>Guest Room Management</Title>
+            <Group gap="xs">
+              <Text size="sm" color="dimmed">
+                {isStaff
+                  ? "Managing bookings and policies for"
+                  : "Request and track your guest room bookings"}
+              </Text>
+              {isStaff && currentHallId && (
+                <Badge variant="outline" color="blue">
+                  {hostels.find((h) => h.hall_id === currentHallId)?.name ||
+                    `Hall ${currentHallId}`}
+                </Badge>
+              )}
+            </Group>
+          </Stack>
+
+          <Group gap="md">
+            {isStaff && hostels.length > 1 && (
+              <Select
+                placeholder="Select Hall"
+                data={hostels.map((h) => ({ value: h.hall_id, label: h.name }))}
+                value={currentHallId}
+                onChange={setCurrentHallId}
+                size="sm"
+                style={{ width: 200 }}
+              />
+            )}
+            {isStudent && (
+              <Button
+                leftSection={<IconPlus size={18} />}
+                onClick={() => setBookingFormOpen(true)}
+                size="md"
+              >
+                Book Guest Room
+              </Button>
+            )}
+          </Group>
+        </Group>
+
+        {error && (
+          <Alert icon={<IconAlertCircle />} color="red" title="Error">
+            {error}
+          </Alert>
         )}
-      </Group>
 
-      {error && (
-        <Alert icon={<IconAlertCircle />} color="red" title="Error">
-          {error}
-        </Alert>
-      )}
+        <Tabs
+          value={activeTab}
+          onChange={setActiveTab}
+          variant="outline"
+          radius="md"
+        >
+          <Tabs.List>
+            <Tabs.Tab
+              value="pending"
+              leftSection={<IconClock size={16} />}
+              rightSection={
+                <Badge size="xs" variant="light">
+                  {filterBookings("pending").length}
+                </Badge>
+              }
+            >
+              Pending
+            </Tabs.Tab>
+            <Tabs.Tab
+              value="approved"
+              leftSection={<IconCheck size={16} />}
+              rightSection={
+                <Badge size="xs" variant="light">
+                  {filterBookings("approved").length}
+                </Badge>
+              }
+            >
+              Approved
+            </Tabs.Tab>
+            <Tabs.Tab
+              value="checked_in"
+              leftSection={<IconUserCheck size={16} />}
+              rightSection={
+                <Badge size="xs" variant="light">
+                  {filterBookings("checked_in").length}
+                </Badge>
+              }
+            >
+              Active
+            </Tabs.Tab>
+            <Tabs.Tab value="history" leftSection={<IconHistory size={16} />}>
+              History
+            </Tabs.Tab>
 
-      <Tabs value={activeTab} onChange={setActiveTab}>
-        <Tabs.List>
-          <Tabs.Tab
-            value="pending"
-            rightSection={<Badge>{pendingBookings.length}</Badge>}
-          >
-            Pending
-          </Tabs.Tab>
-          <Tabs.Tab
-            value="approved"
-            rightSection={<Badge>{approvedBookings.length}</Badge>}
-          >
-            Approved
-          </Tabs.Tab>
-          <Tabs.Tab
-            value="checked_in"
-            rightSection={<Badge>{checkedInBookings.length}</Badge>}
-          >
-            Checked In
-          </Tabs.Tab>
-          <Tabs.Tab
-            value="completed"
-            rightSection={<Badge>{completedBookings.length}</Badge>}
-          >
-            Completed
-          </Tabs.Tab>
-        </Tabs.List>
-
-        <Tabs.Panel value="pending" pt="xl">
-          <Stack gap="md">
-            {pendingBookings.length === 0 ? (
-              <Card withBorder p="xl">
-                <p>No pending bookings</p>
-              </Card>
-            ) : (
-              pendingBookings.map((booking) => (
-                <GuestBookingCard
-                  key={booking.id}
-                  booking={booking}
-                  onApprove={() => handleApprove(booking)}
-                  onReject={() => handleReject(booking)}
-                  canApprove={isStaff}
-                  canReject={isStaff}
-                  showActions={isStaff}
-                />
-              ))
+            {isStaff && (
+              <>
+                <Tabs.Tab
+                  value="registry"
+                  leftSection={<IconBuildingCommunity size={16} />}
+                >
+                  Room Registry
+                </Tabs.Tab>
+                <Tabs.Tab
+                  value="policy"
+                  leftSection={<IconSettings size={16} />}
+                >
+                  Policies
+                </Tabs.Tab>
+              </>
             )}
-          </Stack>
-        </Tabs.Panel>
+          </Tabs.List>
 
-        <Tabs.Panel value="approved" pt="xl">
-          <Stack gap="md">
-            {approvedBookings.length === 0 ? (
-              <Card withBorder p="xl">
-                <p>No approved bookings</p>
-              </Card>
-            ) : (
-              approvedBookings.map((booking) => (
-                <GuestBookingCard
-                  key={booking.id}
-                  booking={booking}
-                  onCheckIn={() => handleCheckIn(booking)}
-                  canCheckIn={isStaff}
-                  showActions={isStaff}
-                />
-              ))
-            )}
-          </Stack>
-        </Tabs.Panel>
+          <Tabs.Panel value="pending" pt="xl">
+            <Stack gap="md">
+              {filterBookings("pending").length === 0
+                ? renderEmptyState("No pending booking requests")
+                : filterBookings("pending").map((b) => (
+                    <GuestBookingCard
+                      key={b.id}
+                      booking={b}
+                      canApprove={isStaff}
+                      onApprove={() => openReviewModal(b)}
+                    />
+                  ))}
+            </Stack>
+          </Tabs.Panel>
 
-        <Tabs.Panel value="checked_in" pt="xl">
-          <Stack gap="md">
-            {checkedInBookings.length === 0 ? (
-              <Card withBorder p="xl">
-                <p>No checked in guests</p>
-              </Card>
-            ) : (
-              checkedInBookings.map((booking) => (
-                <GuestBookingCard
-                  key={booking.id}
-                  booking={booking}
-                  onCheckOut={() => handleCheckOut(booking)}
-                  canCheckOut={isStaff}
-                  showActions={isStaff}
-                />
-              ))
-            )}
-          </Stack>
-        </Tabs.Panel>
+          <Tabs.Panel value="approved" pt="xl">
+            <Stack gap="md">
+              {filterBookings("approved").length === 0
+                ? renderEmptyState("No approved bookings awaiting arrival")
+                : filterBookings("approved").map((b) => (
+                    <GuestBookingCard
+                      key={b.id}
+                      booking={b}
+                      canCheckIn={isStaff}
+                      onCheckIn={() => openCheckInModal(b)}
+                    />
+                  ))}
+            </Stack>
+          </Tabs.Panel>
 
-        <Tabs.Panel value="completed" pt="xl">
-          <Stack gap="md">
-            {completedBookings.length === 0 ? (
-              <Card withBorder p="xl">
-                <p>No completed bookings</p>
-              </Card>
-            ) : (
-              completedBookings.map((booking) => (
-                <GuestBookingCard
-                  key={booking.id}
-                  booking={booking}
-                  showActions={false}
-                />
-              ))
-            )}
-          </Stack>
-        </Tabs.Panel>
-      </Tabs>
+          <Tabs.Panel value="checked_in" pt="xl">
+            <Stack gap="md">
+              {filterBookings("checked_in").length === 0
+                ? renderEmptyState("No guests currently checked in")
+                : filterBookings("checked_in").map((b) => (
+                    <GuestBookingCard
+                      key={b.id}
+                      booking={b}
+                      canCheckOut={isStaff}
+                      onCheckOut={() => openCheckOutModal(b)}
+                    />
+                  ))}
+            </Stack>
+          </Tabs.Panel>
+
+          <Tabs.Panel value="history" pt="xl">
+            <Stack gap="md">
+              {bookings.filter((b) =>
+                ["Completed", "Rejected", "Cancelled"].includes(b.status),
+              ).length === 0
+                ? renderEmptyState("No previous booking history")
+                : bookings
+                    .filter((b) =>
+                      ["Completed", "Rejected", "Cancelled"].includes(b.status),
+                    )
+                    .map((b) => (
+                      <GuestBookingCard
+                        key={b.id}
+                        booking={b}
+                        showActions={false}
+                      />
+                    ))}
+            </Stack>
+          </Tabs.Panel>
+
+          {isStaff && (
+            <>
+              <Tabs.Panel value="registry" pt="xl">
+                <GuestRoomRegistryPanel hallId={currentHallId} />
+              </Tabs.Panel>
+              <Tabs.Panel value="policy" pt="xl">
+                <GuestRoomPolicyPanel hallId={currentHallId} />
+              </Tabs.Panel>
+            </>
+          )}
+        </Tabs>
+      </Stack>
 
       <GuestRoomBookingForm
-        opened={modalOpen}
-        onClose={() => setModalOpen(false)}
-        onSubmit={handleSubmitBooking}
+        opened={bookingFormOpen}
+        onClose={() => setBookingFormOpen(false)}
+        onSubmit={handleSubmitRequest}
         loading={submitting}
       />
 
       <ApproveGuestBookingModal
-        opened={approveModalOpen}
-        onClose={() => {
-          setApproveModalOpen(false);
-          setSelectedBooking(null);
-        }}
+        opened={reviewModalOpen}
+        onClose={() => setReviewModalOpen(false)}
         booking={selectedBooking}
-        hallId={userHallId}
-        onApproveSuccess={() => {
-          loadData();
-          setApproveModalOpen(false);
-          setSelectedBooking(null);
-        }}
+        hallId={currentHallId}
+        onApproveSuccess={loadData}
       />
-    </Stack>
+
+      <GuestCheckInModal
+        opened={checkInModalOpen}
+        onClose={() => setCheckInModalOpen(false)}
+        booking={selectedBooking}
+        onSuccess={loadData}
+      />
+
+      <GuestCheckOutModal
+        opened={checkOutModalOpen}
+        onClose={() => setCheckOutModalOpen(false)}
+        booking={selectedBooking}
+        onSuccess={loadData}
+      />
+    </Container>
   );
 }

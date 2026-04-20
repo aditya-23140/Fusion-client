@@ -1,178 +1,198 @@
-/**
- * GuestBookingCard - Micro Component
- * Displays guest room booking information with status
- * Dumb component - receives data and callbacks from parent
- */
-
 import React from "react";
 import PropTypes from "prop-types";
 import {
   Card,
-  Badge,
   Group,
-  Stack,
   Text,
+  Stack,
+  Badge,
   Button,
-  ThemeIcon,
-  ActionIcon,
-  Tooltip,
   Divider,
+  SimpleGrid,
+  Alert,
 } from "@mantine/core";
 import {
-  IconUserCheck,
+  IconUser,
+  IconCalendar,
+  IconBuildingCommunity,
   IconCheck,
-  IconX,
-  IconChevronRight,
+  IconArrowRight,
+  IconLogout,
+  IconCurrencyRupee,
+  IconInfoCircle,
 } from "@tabler/icons-react";
-
-const statusColors = {
-  pending: "yellow",
-  approved: "green",
-  rejected: "red",
-  checked_in: "blue",
-  checked_out: "gray",
-};
 
 export default function GuestBookingCard({
   booking,
-  onView,
   onApprove,
-  onReject,
   onCheckIn,
   onCheckOut,
-  canApprove = false,
-  canReject = false,
-  canCheckIn = false,
-  canCheckOut = false,
+  canApprove,
+  canCheckIn,
+  canCheckOut,
   showActions = true,
 }) {
-  const isPending = booking.status === "pending";
-  const isApproved = booking.status === "approved";
-  const isCheckedIn = booking.status === "checked_in";
+  const getStatusColor = (status = "") => {
+    const s = status.toLowerCase();
+    if (s === "pending") return "yellow";
+    if (s === "approved") return "green";
+    if (s === "checkedin" || s === "checked_in") return "blue";
+    if (s === "completed" || s === "checked_out") return "gray";
+    if (s === "rejected") return "red";
+    if (s === "cancelled") return "red";
+    return "gray";
+  };
+
+  const getStatusLabel = (status = "") => {
+    if (status === "CheckedIn") return "CHECKED IN";
+    return status.replace("_", " ").toUpperCase();
+  };
 
   return (
-    <Card withBorder padding="lg" radius="md">
-      <Stack gap="sm">
-        <Group justify="space-between" align="flex-start">
-          <Group align="flex-start">
-            <ThemeIcon variant="light" size="lg" radius="md" color="teal">
-              <IconUserCheck size={20} />
-            </ThemeIcon>
-            <Stack gap={4}>
-              <Text fw={600} size="sm">
+    <Card withBorder radius="md" padding="lg" shadow="sm">
+      <Stack gap="md">
+        <Group justify="space-between" align="flex-start" wrap="nowrap">
+          <Stack gap={2} style={{ flex: 1 }}>
+            <Group gap="xs" wrap="nowrap">
+              <IconUser size={20} color="var(--mantine-color-blue-6)" />
+              <Text fw={600} size="lg" truncate>
                 {booking.guest_name}
               </Text>
-              <Text size="xs" c="dimmed">
-                {booking.guest_email}
-              </Text>
-            </Stack>
-          </Group>
-          <Badge color={statusColors[booking.status] || "gray"}>
-            {booking.status}
+            </Group>
+            <Text size="xs" color="dimmed" ml={30} lineClamp={2}>
+              Purpose: {booking.visit_purpose}
+            </Text>
+          </Stack>
+          <Badge
+            size="lg"
+            variant="light"
+            color={getStatusColor(booking.status)}
+          >
+            {getStatusLabel(booking.status)}
           </Badge>
         </Group>
 
         <Divider />
 
-        <Group justify="space-between">
-          <Stack gap={4}>
-            <Text size="xs" fw={500} c="dimmed">
-              Phone
-            </Text>
-            <Text size="sm">{booking.guest_phone}</Text>
-          </Stack>
-          <Stack gap={4}>
-            <Text size="xs" fw={500} c="dimmed">
-              Room
-            </Text>
-            <Badge variant="light">
-              {booking.room?.hall?.name} - Room {booking.room?.number}
-            </Badge>
-          </Stack>
-        </Group>
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
+          <Group gap="sm" wrap="nowrap">
+            <IconCalendar
+              size={24}
+              color="var(--mantine-color-blue-5)"
+              style={{ flexShrink: 0 }}
+            />
+            <Stack gap={0}>
+              <Text size="xs" color="dimmed" tt="uppercase" fw={600}>
+                Check-In Date
+              </Text>
+              <Text size="sm" fw={600}>
+                {booking.check_in_date}
+              </Text>
+            </Stack>
+          </Group>
 
-        <Group justify="space-between">
-          <Stack gap={4}>
-            <Text size="xs" fw={500} c="dimmed">
-              Check-in
-            </Text>
-            <Text size="sm">
-              {new Date(booking.check_in_date).toLocaleDateString()}
-            </Text>
-          </Stack>
-          <Stack gap={4}>
-            <Text size="xs" fw={500} c="dimmed">
-              Check-out
-            </Text>
-            <Text size="sm">
-              {new Date(booking.check_out_date).toLocaleDateString()}
-            </Text>
-          </Stack>
-        </Group>
+          <Group gap="sm" wrap="nowrap">
+            <IconCalendar
+              size={24}
+              color="var(--mantine-color-blue-5)"
+              style={{ flexShrink: 0 }}
+            />
+            <Stack gap={0}>
+              <Text size="xs" color="dimmed" tt="uppercase" fw={600}>
+                Check-Out Date
+              </Text>
+              <Text size="sm" fw={600}>
+                {booking.check_out_date}
+              </Text>
+            </Stack>
+          </Group>
 
-        <Stack gap={2}>
-          <Text size="xs" fw={500} c="dimmed">
-            Purpose
-          </Text>
-          <Text size="sm" c="dimmed">
-            {booking.purpose}
-          </Text>
-        </Stack>
+          <Group gap="sm" wrap="nowrap">
+            <IconBuildingCommunity
+              size={24}
+              color="var(--mantine-color-orange-5)"
+              style={{ flexShrink: 0 }}
+            />
+            <Stack gap={0}>
+              <Text size="xs" color="dimmed" tt="uppercase" fw={600}>
+                Room Assignment
+              </Text>
+              <Text size="sm" fw={600}>
+                {booking.room_number
+                  ? `Room ${booking.room_number}`
+                  : "Pending Assignment"}
+              </Text>
+            </Stack>
+          </Group>
+
+          <Group gap="sm" wrap="nowrap">
+            <IconCurrencyRupee
+              size={24}
+              color="var(--mantine-color-teal-5)"
+              style={{ flexShrink: 0 }}
+            />
+            <Stack gap={0}>
+              <Text size="xs" color="dimmed" tt="uppercase" fw={600}>
+                Total Charge
+              </Text>
+              <Text size="sm" fw={700} color="teal.7">
+                ₹{booking.total_charges}
+              </Text>
+            </Stack>
+          </Group>
+        </SimpleGrid>
+
+        {booking.status?.toLowerCase() === "checkedin" &&
+          booking.id_proof_number && (
+            <Alert
+              icon={<IconInfoCircle size={16} />}
+              color="blue"
+              variant="light"
+              py="xs"
+            >
+              <Text size="xs">
+                Identity Verified: {booking.id_proof_type.toUpperCase()} -{" "}
+                {booking.id_proof_number}
+              </Text>
+            </Alert>
+          )}
 
         {showActions && (
-          <Group justify="flex-end" gap="xs" mt="md">
-            <Tooltip label="View Details">
-              <ActionIcon
-                variant="light"
-                color="blue"
-                onClick={() => onView?.(booking)}
-              >
-                <IconChevronRight size={18} />
-              </ActionIcon>
-            </Tooltip>
-
-            {canApprove && isPending && (
+          <Group justify="flex-end" mt="md" gap="sm">
+            {booking.status?.toLowerCase() === "pending" && canApprove && (
               <Button
-                size="xs"
+                variant="light"
                 color="green"
-                onClick={() => onApprove?.(booking)}
+                leftSection={<IconCheck size={18} />}
+                onClick={onApprove}
               >
-                <IconCheck size={16} />
-                Approve
+                Review & Approve
               </Button>
             )}
 
-            {canReject && isPending && (
+            {booking.status?.toLowerCase() === "approved" && canCheckIn && (
               <Button
-                size="xs"
-                color="red"
-                variant="light"
-                onClick={() => onReject?.(booking)}
-              >
-                <IconX size={16} />
-                Reject
-              </Button>
-            )}
-
-            {canCheckIn && isApproved && (
-              <Button
-                size="xs"
+                variant="filled"
                 color="blue"
-                onClick={() => onCheckIn?.(booking)}
+                leftSection={<IconArrowRight size={18} />}
+                onClick={onCheckIn}
               >
-                Check In
+                Verify & Check-In
               </Button>
             )}
 
-            {canCheckOut && isCheckedIn && (
-              <Button
-                size="xs"
-                color="gray"
-                onClick={() => onCheckOut?.(booking)}
-              >
-                Check Out
-              </Button>
-            )}
+            {(booking.status?.toLowerCase() === "checkedin" ||
+              booking.status?.toLowerCase() === "checked_in") &&
+              canCheckOut && (
+                <Button
+                  variant="filled"
+                  color="orange"
+                  leftSection={<IconLogout size={18} />}
+                  onClick={onCheckOut}
+                >
+                  Inspect & Check-Out
+                </Button>
+              )}
           </Group>
         )}
       </Stack>
@@ -182,29 +202,21 @@ export default function GuestBookingCard({
 
 GuestBookingCard.propTypes = {
   booking: PropTypes.shape({
-    id: PropTypes.number.isRequired,
-    guest_name: PropTypes.string.isRequired,
-    guest_email: PropTypes.string.isRequired,
-    guest_phone: PropTypes.string.isRequired,
-    check_in_date: PropTypes.string.isRequired,
-    check_out_date: PropTypes.string.isRequired,
-    purpose: PropTypes.string.isRequired,
-    status: PropTypes.string.isRequired,
-    room: PropTypes.shape({
-      number: PropTypes.string,
-      hall: PropTypes.shape({
-        name: PropTypes.string,
-      }),
-    }),
+    guest_name: PropTypes.string,
+    visit_purpose: PropTypes.string,
+    status: PropTypes.string,
+    check_in_date: PropTypes.string,
+    check_out_date: PropTypes.string,
+    room_number: PropTypes.string,
+    total_charges: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    id_proof_number: PropTypes.string,
+    id_proof_type: PropTypes.string,
   }).isRequired,
-  onView: PropTypes.func,
-  onApprove: PropTypes.func,
-  onReject: PropTypes.func,
-  onCheckIn: PropTypes.func,
-  onCheckOut: PropTypes.func,
-  canApprove: PropTypes.bool,
-  canReject: PropTypes.bool,
-  canCheckIn: PropTypes.bool,
-  canCheckOut: PropTypes.bool,
+  onApprove: PropTypes.func.isRequired,
+  onCheckIn: PropTypes.func.isRequired,
+  onCheckOut: PropTypes.func.isRequired,
+  canApprove: PropTypes.bool.isRequired,
+  canCheckIn: PropTypes.bool.isRequired,
+  canCheckOut: PropTypes.bool.isRequired,
   showActions: PropTypes.bool,
 };

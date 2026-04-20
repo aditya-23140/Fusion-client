@@ -55,9 +55,11 @@ import {
   noticeHistoryRoute,
   // Guest Room Booking (HM-WF-112)
   guestBookingsRoute,
+  guestRegistryRoute,
+  guestAvailableRoomsRoute,
+  guestPolicyRoute,
   guestBookingDetailRoute,
   guestBookingApproveRoute,
-  guestBookingRejectRoute,
   guestBookingCheckInRoute,
   guestBookingCheckOutRoute,
   // Batch Identification & Management
@@ -595,8 +597,8 @@ export const requestGuestBooking = async (bookingData) => {
   return response.data;
 };
 
-export const fetchGuestBookings = async () => {
-  const response = await apiClient.get(guestBookingsRoute);
+export const fetchGuestBookings = async (params = {}) => {
+  const response = await apiClient.get(guestBookingsRoute, { params });
   return response.data;
 };
 
@@ -605,25 +607,9 @@ export const fetchGuestBookingDetail = async (bookingId) => {
   return response.data;
 };
 
-export const updateGuestBooking = async (bookingId, data) => {
-  const response = await apiClient.put(
-    guestBookingDetailRoute(bookingId),
-    data,
-  );
-  return response.data;
-};
-
 export const approveGuestBooking = async (bookingId, data) => {
   const response = await apiClient.post(
     guestBookingApproveRoute(bookingId),
-    data,
-  );
-  return response.data;
-};
-
-export const rejectGuestBooking = async (bookingId, data) => {
-  const response = await apiClient.post(
-    guestBookingRejectRoute(bookingId),
     data,
   );
   return response.data;
@@ -642,6 +628,44 @@ export const checkOutGuest = async (bookingId, data) => {
     guestBookingCheckOutRoute(bookingId),
     data,
   );
+  return response.data;
+};
+
+// Registry & Policy
+export const fetchGuestRoomRegistry = async (params = {}) => {
+  const response = await apiClient.get(guestRegistryRoute, { params });
+  return response.data;
+};
+
+export const registerGuestRoom = async (data) => {
+  const response = await apiClient.post(guestRegistryRoute, data);
+  return response.data;
+};
+
+export const deleteGuestRoom = async (id) => {
+  const response = await apiClient.delete(`${guestRegistryRoute}${id}/`);
+  return response.data;
+};
+
+export const fetchAvailableRoomsForGuest = async (hallId) => {
+  const response = await apiClient.get(guestAvailableRoomsRoute, {
+    params: { hall_id: hallId },
+  });
+  return response.data;
+};
+
+export const fetchGuestRoomPolicy = async (hallId) => {
+  const response = await apiClient.get(guestPolicyRoute(hallId));
+  return response.data;
+};
+
+export const updateGuestRoomPolicy = async (hallId, data) => {
+  const response = await apiClient.post(guestPolicyRoute(hallId), data);
+  return response.data;
+};
+
+export const deleteGuestRoomPolicy = async (hallId) => {
+  const response = await apiClient.delete(guestPolicyRoute(hallId));
   return response.data;
 };
 

@@ -101,17 +101,20 @@ export const noticeDetailRoute = (noticeId) =>
 export const noticeHistoryRoute = `${BASE_URL}/notices/history/`;
 
 // Guest Room Booking (HM-WF-112)
-export const guestBookingsRoute = `${BASE_URL}/guest-bookings/`;
+export const guestBookingsRoute = `${BASE_URL}/guest-bookings/bookings/`;
+export const guestRegistryRoute = `${BASE_URL}/guest-bookings/registry/`;
+export const guestAvailableRoomsRoute = `${BASE_URL}/guest-bookings/registry/available-rooms/`;
+export const guestPolicyRoute = (hallId) =>
+  `${BASE_URL}/guest-bookings/policy/${hallId}/`;
+
 export const guestBookingDetailRoute = (bookingId) =>
-  `${BASE_URL}/guest-bookings/${bookingId}/`;
+  `${BASE_URL}/guest-bookings/bookings/${bookingId}/`;
 export const guestBookingApproveRoute = (bookingId) =>
-  `${BASE_URL}/guest-bookings/${bookingId}/approve/`;
-export const guestBookingRejectRoute = (bookingId) =>
-  `${BASE_URL}/guest-bookings/${bookingId}/reject/`;
+  `${BASE_URL}/guest-bookings/bookings/${bookingId}/approve/`;
 export const guestBookingCheckInRoute = (bookingId) =>
-  `${BASE_URL}/guest-bookings/${bookingId}/check-in/`;
+  `${BASE_URL}/guest-bookings/bookings/${bookingId}/check-in/`;
 export const guestBookingCheckOutRoute = (bookingId) =>
-  `${BASE_URL}/guest-bookings/${bookingId}/check-out/`;
+  `${BASE_URL}/guest-bookings/bookings/${bookingId}/check-out/`;
 
 // Attendance Management
 export const listAttendanceRoute = (hallId) =>
