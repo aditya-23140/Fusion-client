@@ -1,7 +1,6 @@
 /**
  * NoticeCard - Micro Component
- * Displays a single notice from the notice board
- * Dumb component - receives data and callbacks from parent
+ * Displays a single notice from the notice board with priority levels and read status.
  */
 
 import React from "react";
@@ -15,17 +14,23 @@ import {
   ThemeIcon,
   ActionIcon,
   Tooltip,
+  Indicator,
+  Box,
+  Anchor,
 } from "@mantine/core";
 import {
   IconBellRinging,
   IconChevronRight,
   IconTrash,
+  IconAlertTriangle,
+  IconInfoCircle,
+  IconDownload,
 } from "@tabler/icons-react";
 
-const priorityColors = {
-  low: "gray",
-  medium: "yellow",
-  high: "red",
+const priorityConfig = {
+  Urgent: { color: "red", icon: IconAlertTriangle, label: "Urgent" },
+  Important: { color: "orange", icon: IconInfoCircle, label: "Important" },
+  Normal: { color: "gray", icon: IconBellRinging, label: "Normal" },
 };
 
 export default function NoticeCard({
@@ -35,64 +40,122 @@ export default function NoticeCard({
   canDelete = false,
   showActions = true,
 }) {
+  const config = priorityConfig[notice.priority] || priorityConfig.Normal;
+  const isUrgent = notice.priority === "Urgent";
+  const isImportant = notice.priority === "Important";
+
   return (
-    <Card withBorder padding="lg" radius="md">
-      <Stack gap="sm">
-        <Group justify="space-between" align="flex-start">
-          <Group align="flex-start">
-            <ThemeIcon variant="light" size="lg" radius="md" color="blue">
-              <IconBellRinging size={20} />
-            </ThemeIcon>
-            <Stack gap={4}>
-              <Text fw={600} size="sm">
-                {notice.title}
-              </Text>
-              <Text size="xs" c="dimmed">
-                Posted on {new Date(notice.created_at).toLocaleDateString()}
-              </Text>
-            </Stack>
-          </Group>
-          <Badge color={priorityColors[notice.priority] || "gray"}>
-            {notice.priority}
-          </Badge>
-        </Group>
-
-        <Text size="sm" c="dimmed" lineClamp={3}>
-          {notice.content}
-        </Text>
-
-        {notice.category && (
-          <Badge size="sm" variant="light">
-            {notice.category}
-          </Badge>
-        )}
-
-        {showActions && (
-          <Group justify="flex-end" gap="xs">
-            <Tooltip label="View Full Notice">
-              <ActionIcon
+    <Indicator
+      inline
+      processing
+      disabled={notice.is_read || !showActions}
+      color="blue"
+      size={12}
+      offset={4}
+      h="100%"
+      styles={{ indicator: { zIndex: 10 } }}
+    >
+      <Card
+        withBorder
+        padding="md"
+        radius="md"
+        h="100%"
+        sx={(theme) => ({
+          display: "flex",
+          borderLeft: `4px solid ${theme.colors[config.color][6]}`,
+          backgroundColor: isUrgent
+            ? theme.colors.red[0]
+            : isImportant
+              ? theme.colors.orange[0]
+              : "white",
+          transition: "transform 0.2s ease, box-shadow 0.2s ease",
+          "&:hover": {
+            transform: "translateY(-2px)",
+            box_shadow: theme.shadows.sm,
+          },
+        })}
+      >
+        <Stack gap="sm" style={{ flex: 1 }}>
+          <Group justify="space-between" align="flex-start" wrap="nowrap">
+            <Group align="flex-start" wrap="nowrap" gap="sm">
+              <ThemeIcon
                 variant="light"
-                color="blue"
-                onClick={() => onView?.(notice)}
+                size="lg"
+                radius="md"
+                color={config.color}
               >
-                <IconChevronRight size={18} />
-              </ActionIcon>
-            </Tooltip>
-            {canDelete && (
-              <Tooltip label="Delete">
-                <ActionIcon
-                  variant="light"
-                  color="red"
-                  onClick={() => onDelete?.(notice)}
+                <config.icon size={20} />
+              </ThemeIcon>
+              <Stack gap={2}>
+                <Text fw={700} size="sm" lineClamp={1}>
+                  {notice.title}
+                </Text>
+                <Text size="xs" c="dimmed">
+                  {notice.created_by_name} •{" "}
+                  {new Date(notice.created_at).toLocaleDateString()}
+                </Text>
+              </Stack>
+            </Group>
+            <Badge color={config.color} variant="light" size="sm">
+              {config.label}
+            </Badge>
+          </Group>
+
+          <Text size="sm" c="dimmed" lineClamp={2}>
+            {notice.description}
+          </Text>
+
+          <Group justify="space-between" align="center" mt="auto" pt="xs">
+            <Box>
+              {notice.attachment && (
+                <Anchor
+                  href={notice.attachment}
+                  target="_blank"
+                  download
+                  underline="hover"
+                  size="xs"
                 >
-                  <IconTrash size={18} />
-                </ActionIcon>
-              </Tooltip>
+                  <Group gap={4}>
+                    <IconDownload size={14} />
+                    <Text size="xs" span>
+                      Attachment
+                    </Text>
+                  </Group>
+                </Anchor>
+              )}
+            </Box>
+
+            {showActions && (
+              <Group gap="xs">
+                {canDelete && (
+                  <Tooltip label="Delete Notice">
+                    <ActionIcon
+                      variant="subtle"
+                      color="red"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete?.(notice);
+                      }}
+                    >
+                      <IconTrash size={18} />
+                    </ActionIcon>
+                  </Tooltip>
+                )}
+                <Tooltip label="View Details">
+                  <ActionIcon
+                    variant="filled"
+                    color={config.color}
+                    onClick={() => onView?.(notice)}
+                  >
+                    <IconChevronRight size={18} />
+                  </ActionIcon>
+                </Tooltip>
+              </Group>
             )}
           </Group>
-        )}
-      </Stack>
-    </Card>
+        </Stack>
+      </Card>
+    </Indicator>
   );
 }
 
@@ -100,10 +163,12 @@ NoticeCard.propTypes = {
   notice: PropTypes.shape({
     id: PropTypes.number.isRequired,
     title: PropTypes.string.isRequired,
-    content: PropTypes.string.isRequired,
+    description: PropTypes.string.isRequired,
     priority: PropTypes.string,
-    category: PropTypes.string,
+    created_by_name: PropTypes.string,
     created_at: PropTypes.string.isRequired,
+    is_read: PropTypes.bool,
+    attachment: PropTypes.string,
   }).isRequired,
   onView: PropTypes.func,
   onDelete: PropTypes.func,

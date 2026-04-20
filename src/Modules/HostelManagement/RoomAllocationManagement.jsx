@@ -6,7 +6,6 @@
 
 import React, { useState, useEffect } from "react";
 import {
-  Container,
   Tabs,
   Button,
   Group,
@@ -611,7 +610,7 @@ export default function RoomAllocationManagement() {
   };
   const roleBasedTabs = getRoleBasedTabs();
   return (
-    <Container size="100%" py="md" px="md">
+    <Stack gap="lg">
       <Tabs value={activeTab} onChange={setActiveTab}>
         <Tabs.List>
           {roleBasedTabs.map((tab) => (
@@ -1420,6 +1419,6 @@ export default function RoomAllocationManagement() {
           )}
         </>
       )}
-    </Container>
+    </Stack>
   );
 }

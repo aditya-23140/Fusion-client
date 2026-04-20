@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import {
   Box,
-  Container,
   Title,
   Text,
   Tabs,
@@ -281,7 +280,7 @@ function AccommodationAllotment({ userRole }) {
   return (
     <Transition mounted transition="fade" duration={800}>
       {(styles) => (
-        <Container size="xl" py="xl" style={styles}>
+        <Box style={styles}>
           <Box mb="xl">
             <Group justify="space-between" align="flex-end">
               <Stack gap={4}>
@@ -797,7 +796,7 @@ function AccommodationAllotment({ userRole }) {
               )}
             </Box>
           )}
-        </Container>
+        </Box>
       )}
     </Transition>
   );

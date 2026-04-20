@@ -5,7 +5,6 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  Container,
   Tabs,
   Title,
   Stack,
@@ -268,7 +267,7 @@ export default function InventoryManagement() {
   ).length;
 
   return (
-    <Container size="xl" py="lg">
+    <Stack gap="lg">
       <Stack gap="lg">
         <Group justify="space-between">
           <div>
@@ -422,7 +421,7 @@ export default function InventoryManagement() {
         onUpload={handleBulkUpload}
         loading={loading}
       />
-    </Container>
+    </Stack>
   );
 }
 

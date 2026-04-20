@@ -6,7 +6,6 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  Container,
   Title,
   Button,
   Group,
@@ -217,7 +216,7 @@ export default function ComplaintManagement() {
   ).length;
 
   return (
-    <Container size="xl" py="xl">
+    <Stack gap="xl">
       <Grid gutter="xl">
         {/* Sidebar: Stats & Filters */}
         <Grid.Col span={{ base: 12, md: 3 }}>
@@ -648,6 +647,6 @@ export default function ComplaintManagement() {
           </Group>
         </Stack>
       </Modal>
-    </Container>
+    </Stack>
   );
 }

@@ -1,107 +1,183 @@
 /**
- * NoticeBoard - Thin View
- * Manages notice board
- * Orchestrates components and handles state, calls api.js
+ * NoticeBoard - Unified Management & View Port
+ * HM-WF-110: Robust Notice Lifecycle implementation.
  */
 
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  Container,
-  Card,
   Title,
   Button,
   Group,
-  Alert,
   Stack,
+  Tabs,
   Badge,
   Modal,
-  TextInput,
-  Textarea,
-  Select,
+  Text,
+  SimpleGrid,
+  Loader,
+  Center,
+  ScrollArea,
+  Divider,
 } from "@mantine/core";
-import { IconPlus, IconAlertCircle } from "@tabler/icons-react";
+import {
+  IconPlus,
+  IconHistory,
+  IconLayoutGrid,
+  IconTable,
+  IconCalendarEvent,
+  IconUser,
+  IconDownload,
+} from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
-import { useForm } from "@mantine/form";
 import { useSelector } from "react-redux";
+import PropTypes from "prop-types";
+
 import NoticeCard from "./components/NoticeCard";
-import { fetchNotices, createNotice, deleteNotice } from "./api";
+import NoticesTable from "./components/NoticesTable";
+import CreateNoticeModal from "./components/CreateNoticeModal";
+import {
+  fetchNotices,
+  fetchNoticeHistory,
+  createNotice,
+  deleteNotice,
+  fetchNoticeDetail,
+  fetchHostels,
+} from "./api";
+
+// Helper Component for Consistent Empty States
+function BoardEmptyState({ title, description, icon: Icon = IconLayoutGrid }) {
+  return (
+    <Center py={100} px="md">
+      <Stack align="center" gap="md">
+        <div
+          style={{
+            padding: "20px",
+            borderRadius: "50%",
+            backgroundColor: "var(--mantine-color-blue-0)",
+            color: "var(--mantine-color-blue-6)",
+          }}
+        >
+          <Icon size={48} stroke={1.5} />
+        </div>
+        <Stack align="center" gap={4}>
+          <Text fw={700} size="xl" ta="center">
+            {title}
+          </Text>
+          <Text c="dimmed" size="sm" maw={320} ta="center" lh={1.5}>
+            {description}
+          </Text>
+        </Stack>
+      </Stack>
+    </Center>
+  );
+}
+
+BoardEmptyState.propTypes = {
+  title: PropTypes.string.isRequired,
+  description: PropTypes.string.isRequired,
+  icon: PropTypes.elementType,
+};
 
 export default function NoticeBoard() {
   const [notices, setNotices] = useState([]);
+  const [history, setHistory] = useState([]);
+  const [hostels, setHostels] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [hallId] = useState(null);
+  const [activeTab, setActiveTab] = useState("active");
+
+  // Specific Detail Modal State
+  const [detailNotice, setDetailNotice] = useState(null);
+
+  // Creation Modal State
+  const [createOpened, setCreateOpened] = useState(false);
 
   const userRole = useSelector((state) => state.user.role);
-  const isStaff = userRole === "caretaker" || userRole === "warden";
+  const isSuperAdmin = userRole === "super_admin";
+  const isStaff =
+    isSuperAdmin || userRole === "caretaker" || userRole === "warden";
 
-  const form = useForm({
-    initialValues: {
-      title: "",
-      description: "",
-      priority: "medium",
-      category: "",
-    },
-    validate: {
-      title: (value) =>
-        value && value.length >= 5
-          ? null
-          : "Title must be at least 5 characters",
-      description: (value) =>
-        value && value.length >= 20
-          ? null
-          : "Description must be at least 20 characters",
-      priority: (value) => (value ? null : "Priority is required"),
-    },
-  });
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      setError(null);
-      const noticesData = await fetchNotices();
-      // Handle paginated response or direct array
-      const noticesArray = Array.isArray(noticesData)
-        ? noticesData
-        : noticesData?.results || [];
-      setNotices(noticesArray);
+      const [activeData, historyData, hostelsData] = await Promise.all([
+        fetchNotices(),
+        fetchNoticeHistory(),
+        isStaff ? fetchHostels() : Promise.resolve([]),
+      ]);
+
+      setNotices(activeData?.results || activeData || []);
+      setHistory(historyData?.results || historyData || []);
+      setHostels(hostelsData || []);
     } catch (err) {
-      setError("Failed to load notices. Please try again.");
-      console.error(err);
+      notifications.show({
+        title: "Load Error",
+        message: "Could not sync notice board data.",
+        color: "red",
+      });
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isStaff]);
+
   useEffect(() => {
     loadData();
   }, [loadData]);
-  const handleCreateNotice = async (values) => {
+
+  const handleOpenDetail = async (notice) => {
+    try {
+      setDetailNotice(notice);
+      // Fetching detail triggers "mark as read" logic on backend for students
+      const fullNotice = await fetchNoticeDetail(notice.id);
+      setDetailNotice(fullNotice);
+
+      // Update local state to remove unread indicator immediately
+      setNotices((prev) =>
+        prev.map((n) => (n.id === notice.id ? { ...n, is_read: true } : n)),
+      );
+    } catch (err) {
+      console.error("Failed to mark check read status");
+    }
+  };
+
+  const handleCreateSubmit = async (formData) => {
     try {
       setSubmitting(true);
-      // For warden/caretaker, use their assigned hall
-      // For now, default to hall 1 if no hall ID is set
-      const noticeHallId = hallId || 1;
-
-      await createNotice({
-        ...values,
-        hall_id: noticeHallId,
-      });
+      await createNotice(formData);
       notifications.show({
-        title: "Success",
-        message: "Notice posted successfully",
+        title: "Published",
+        message: "The new notice is now live.",
         color: "green",
       });
-      form.reset();
-      setModalOpen(false);
+      setCreateOpened(false);
       loadData();
     } catch (err) {
+      const errorData = err.response?.data;
+      let errorMessage = "Check validation rules.";
+
+      if (typeof errorData === "string") {
+        errorMessage = errorData.slice(0, 150);
+      } else if (typeof errorData === "object" && errorData !== null) {
+        if (errorData.detail) errorMessage = errorData.detail;
+        else if (errorData.error) errorMessage = errorData.error;
+        else if (errorData.non_field_errors)
+          errorMessage = errorData.non_field_errors.join(", ");
+        else {
+          // Combine field-specific errors
+          errorMessage = Object.entries(errorData)
+            .map(
+              ([field, msgs]) =>
+                `${field}: ${Array.isArray(msgs) ? msgs.join(", ") : msgs}`,
+            )
+            .join(" | ");
+        }
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+
       notifications.show({
-        title: "Error",
-        message:
-          err.response?.data?.error ||
-          err.response?.data?.hall_id?.[0] ||
-          "Failed to post notice",
+        title: "Broadcast Failed",
+        message: errorMessage,
         color: "red",
       });
     } finally {
@@ -109,177 +185,225 @@ export default function NoticeBoard() {
     }
   };
 
-  const handleDeleteNotice = async (notice) => {
-    if (window.confirm("Are you sure you want to delete this notice?")) {
+  const handleDelete = async (notice) => {
+    if (window.confirm(`Permanently delete notice: ${notice.title}?`)) {
       try {
         await deleteNotice(notice.id);
         notifications.show({
-          title: "Success",
-          message: "Notice deleted",
-          color: "green",
+          title: "Deleted",
+          message: "Notice removed from board.",
+          color: "gray",
         });
         loadData();
       } catch (err) {
         notifications.show({
           title: "Error",
-          message: err.response?.data?.error || "Failed to delete notice",
+          message: "Could not remove notice.",
           color: "red",
         });
       }
     }
   };
 
-  const highPriorityNotices = notices.filter((n) => n.priority === "high");
-  const mediumPriorityNotices = notices.filter((n) => n.priority === "medium");
-  const lowPriorityNotices = notices.filter((n) => n.priority === "low");
+  if (loading && !notices.length) {
+    return (
+      <Center style={{ height: "60vh" }}>
+        <Loader size="lg" variant="dots" />
+      </Center>
+    );
+  }
 
   return (
-    <Container size="lg" py="xl">
-      <Stack gap="lg">
-        <Group justify="space-between" align="center">
-          <Title order={2}>Notice Board</Title>
+    <Stack gap="xl">
+      <Stack>
+        <Group justify="space-between" align="flex-end">
+          <Stack gap={0}>
+            <Title order={1} fw={800} style={{ letterSpacing: "-1px" }}>
+              Hostel Notice Board
+            </Title>
+            <Text c="dimmed" size="sm">
+              Official updates and announcements for residents
+            </Text>
+          </Stack>
+
           {isStaff && (
             <Button
-              leftSection={<IconPlus size={18} />}
-              onClick={() => setModalOpen(true)}
+              size="md"
+              leftSection={<IconPlus size={20} />}
+              onClick={() => setCreateOpened(true)}
+              variant="filled"
+              color="blue"
+              radius="md"
             >
-              Post Notice
+              Compose Notice
             </Button>
           )}
         </Group>
 
-        {error && (
-          <Alert icon={<IconAlertCircle />} color="red" title="Error">
-            {error}
-          </Alert>
-        )}
-
-        {loading ? (
-          <Card withBorder p="xl">
-            <p>Loading notices...</p>
-          </Card>
-        ) : notices.length === 0 ? (
-          <Card withBorder p="xl">
-            <p>No notices at the moment</p>
-          </Card>
-        ) : (
-          <Stack gap="lg">
-            {highPriorityNotices.length > 0 && (
-              <Stack gap="md">
-                <Group>
-                  <Title order={4}>Important</Title>
-                  <Badge color="red">{highPriorityNotices.length}</Badge>
-                </Group>
-                {highPriorityNotices.map((notice) => (
-                  <NoticeCard
-                    key={notice.id}
-                    notice={notice}
-                    onDelete={() => handleDeleteNotice(notice)}
-                    canDelete={isStaff}
-                    showActions={isStaff}
-                  />
-                ))}
-              </Stack>
-            )}
-
-            {mediumPriorityNotices.length > 0 && (
-              <Stack gap="md">
-                <Group>
-                  <Title order={4}>Regular</Title>
-                  <Badge color="yellow">{mediumPriorityNotices.length}</Badge>
-                </Group>
-                {mediumPriorityNotices.map((notice) => (
-                  <NoticeCard
-                    key={notice.id}
-                    notice={notice}
-                    onDelete={() => handleDeleteNotice(notice)}
-                    canDelete={isStaff}
-                    showActions={isStaff}
-                  />
-                ))}
-              </Stack>
-            )}
-
-            {lowPriorityNotices.length > 0 && (
-              <Stack gap="md">
-                <Group>
-                  <Title order={4}>Updates</Title>
-                  <Badge color="gray">{lowPriorityNotices.length}</Badge>
-                </Group>{" "}
-                {lowPriorityNotices.map((notice) => (
-                  <NoticeCard
-                    key={notice.id}
-                    notice={notice}
-                    onDelete={() => handleDeleteNotice(notice)}
-                    canDelete={isStaff}
-                    showActions={isStaff}
-                  />
-                ))}
-              </Stack>
-            )}
-          </Stack>
-        )}
-
-        <Modal
-          opened={modalOpen}
-          onClose={() => setModalOpen(false)}
-          title="Post New Notice"
-          centered
+        <Tabs
+          value={activeTab}
+          onChange={setActiveTab}
+          variant="pills"
+          radius="md"
+          style={{ minHeight: "600px" }}
         >
-          <form onSubmit={form.onSubmit(handleCreateNotice)}>
+          <Tabs.List>
+            <Tabs.Tab value="active" leftSection={<IconLayoutGrid size={18} />}>
+              Active Board
+            </Tabs.Tab>
+            <Tabs.Tab value="history" leftSection={<IconHistory size={18} />}>
+              History
+            </Tabs.Tab>
+            {isStaff && (
+              <Tabs.Tab value="manage" leftSection={<IconTable size={18} />}>
+                Management View
+              </Tabs.Tab>
+            )}
+          </Tabs.List>
+
+          <Tabs.Panel value="active" pt="xl">
+            {notices.length === 0 ? (
+              <BoardEmptyState
+                icon={IconLayoutGrid}
+                title="All Clear for Today"
+                description="There are no active notices at the moment. New announcements will appear here as they are published."
+              />
+            ) : (
+              <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="lg">
+                {notices.map((notice) => (
+                  <NoticeCard
+                    key={notice.id}
+                    notice={notice}
+                    onView={() => handleOpenDetail(notice)}
+                    onDelete={() => handleDelete(notice)}
+                    canDelete={isStaff}
+                    showActions
+                  />
+                ))}
+              </SimpleGrid>
+            )}
+          </Tabs.Panel>
+
+          <Tabs.Panel value="history" pt="xl">
+            {history.length === 0 ? (
+              <BoardEmptyState
+                icon={IconHistory}
+                title="Clean Slate"
+                description="Your notice history is currently empty. Expired or archived notices will be automatically moved here."
+              />
+            ) : (
+              <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="lg">
+                {history.map((notice) => (
+                  <NoticeCard
+                    key={notice.id}
+                    notice={notice}
+                    onView={() => handleOpenDetail(notice)}
+                    showActions
+                  />
+                ))}
+              </SimpleGrid>
+            )}
+          </Tabs.Panel>
+
+          <Tabs.Panel value="manage" pt="xl">
+            <NoticesTable
+              notices={[...notices, ...history]}
+              loading={loading}
+              onView={(row) => handleOpenDetail(row)}
+              onDelete={handleDelete}
+              canDelete
+            />
+          </Tabs.Panel>
+        </Tabs>
+      </Stack>
+
+      <CreateNoticeModal
+        opened={createOpened}
+        onClose={() => setCreateOpened(false)}
+        onSubmit={handleCreateSubmit}
+        loading={submitting}
+        hostels={hostels}
+        isSuperAdmin={isSuperAdmin}
+      />
+
+      {/* Notice Detail Modal */}
+      <Modal
+        opened={!!detailNotice}
+        onClose={() => setDetailNotice(null)}
+        title={`${detailNotice?.priority} Announcement`}
+        size="lg"
+        radius="md"
+        centered
+      >
+        {detailNotice && (
+          <ScrollArea.Autosize mah="70vh">
             <Stack gap="md">
-              {" "}
-              <TextInput
-                label="Title"
-                placeholder="Notice title"
-                value={form.values.title}
-                onChange={(e) =>
-                  form.setFieldValue("title", e.currentTarget.value)
-                }
-                error={form.errors.title}
-              />
-              <Textarea
-                label="Description"
-                placeholder="Write your notice here"
-                minRows={4}
-                value={form.values.description}
-                onChange={(e) =>
-                  form.setFieldValue("description", e.currentTarget.value)
-                }
-                error={form.errors.description}
-              />
-              <Select
-                label="Priority"
-                data={[
-                  { value: "low", label: "Low" },
-                  { value: "medium", label: "Medium" },
-                  { value: "high", label: "High" },
-                ]}
-                value={form.values.priority}
-                onChange={(value) => form.setFieldValue("priority", value)}
-                error={form.errors.priority}
-              />
-              <TextInput
-                label="Category"
-                placeholder="e.g., Maintenance, Event, Alert"
-                value={form.values.category}
-                onChange={(e) =>
-                  form.setFieldValue("category", e.currentTarget.value)
-                }
-                error={form.errors.category}
-              />
-              <Group justify="flex-end">
-                <Button variant="default" onClick={() => setModalOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit" loading={submitting}>
-                  Post Notice
+              <Group justify="space-between">
+                <Title order={2}>{detailNotice.title}</Title>
+                <Badge
+                  color={
+                    detailNotice.priority === "Urgent"
+                      ? "red"
+                      : detailNotice.priority === "Important"
+                        ? "orange"
+                        : "gray"
+                  }
+                  size="lg"
+                >
+                  {detailNotice.priority}
+                </Badge>
+              </Group>
+
+              <Group gap="xl">
+                <Group gap="xs">
+                  <IconUser size={16} color="gray" />
+                  <Text size="sm" c="dimmed">
+                    {detailNotice.created_by_name}
+                  </Text>
+                </Group>
+                <Group gap="xs">
+                  <IconCalendarEvent size={16} color="gray" />
+                  <Text size="sm" c="dimmed">
+                    Starts:{" "}
+                    {new Date(detailNotice.start_date).toLocaleDateString()}
+                  </Text>
+                </Group>
+              </Group>
+
+              <Divider />
+
+              <Text style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>
+                {detailNotice.description}
+              </Text>
+
+              {detailNotice.attachment && (
+                <Stack gap={5} mt="lg">
+                  <Text fw={600} size="sm">
+                    Attachment:
+                  </Text>
+                  <Button
+                    component="a"
+                    href={detailNotice.attachment}
+                    target="_blank"
+                    download
+                    leftSection={<IconDownload size={18} />}
+                    variant="light"
+                    fullWidth
+                  >
+                    Download Attachment
+                  </Button>
+                </Stack>
+              )}
+
+              <Group justify="flex-end" mt="xl">
+                <Button variant="light" onClick={() => setDetailNotice(null)}>
+                  Close
                 </Button>
               </Group>
             </Stack>
-          </form>
-        </Modal>
-      </Stack>
-    </Container>
+          </ScrollArea.Autosize>
+        )}
+      </Modal>
+    </Stack>
   );
 }

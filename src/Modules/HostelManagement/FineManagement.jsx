@@ -8,7 +8,6 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
-  Container,
   Grid,
   Card,
   Title,
@@ -129,7 +128,7 @@ export default function FineManagement() {
     );
 
   return (
-    <Container size="xl" py="md">
+    <Stack gap="lg">
       <Stack gap="lg">
         <Group justify="space-between">
           <Title order={2}>Hostel Fine Management</Title>
@@ -406,6 +405,6 @@ export default function FineManagement() {
           </Stack>
         )}
       </Modal>
-    </Container>
+    </Stack>
   );
 }

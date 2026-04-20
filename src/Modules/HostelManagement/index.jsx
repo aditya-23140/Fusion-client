@@ -9,7 +9,7 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { Flex, Alert } from "@mantine/core";
+import { Container, Box, Flex, Alert } from "@mantine/core";
 import { ModalsProvider } from "@mantine/modals";
 import { IconAlertCircle } from "@tabler/icons-react";
 import { useDispatch, useSelector } from "react-redux";
@@ -137,26 +137,47 @@ export default function HostelManagementPage() {
 
   return (
     <ModalsProvider>
-      <Flex direction="column" gap="md">
-        <CustomBreadcrumbs />
-        {userRole === "super_admin" && (
-          <Alert
-            icon={<IconAlertCircle />}
-            color="blue"
-            title="Super Admin Mode"
-          >
-            You have access to hostel management administrative functions only:
-            Hall Creation, Warden/Caretaker Assignment, and Batch Allocation.
-          </Alert>
-        )}
+      <Box style={{ width: "100%", minHeight: "100dvh" }}>
+        <Container
+          size="xl"
+          py="xl"
+          style={{
+            width: "100%",
+            maxWidth: "1200px",
+            marginLeft: "auto",
+            marginRight: "auto",
+            scrollbarGutter: "stable",
+          }}
+        >
+          <Flex direction="column" gap="xl">
+            <CustomBreadcrumbs />
+            {userRole === "super_admin" && (
+              <Alert
+                icon={<IconAlertCircle />}
+                color="blue"
+                title="Super Admin Mode"
+              >
+                You have access to hostel management administrative functions
+                only: Hall Creation, Warden/Caretaker Assignment, and Batch
+                Allocation.
+              </Alert>
+            )}
 
-        <ModuleTabs
-          tabs={tabItems}
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-        />
-        <ActiveComponent userRole={userRole} setActiveTab={setActiveTab} />
-      </Flex>
+            <ModuleTabs
+              tabs={tabItems}
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+            />
+
+            <Box style={{ minHeight: "60vh" }}>
+              <ActiveComponent
+                userRole={userRole}
+                setActiveTab={setActiveTab}
+              />
+            </Box>
+          </Flex>
+        </Container>
+      </Box>
     </ModalsProvider>
   );
 }

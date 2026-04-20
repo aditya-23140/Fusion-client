@@ -98,6 +98,7 @@ export const inventoryDetailRoute = (inventoryId) =>
 export const noticesRoute = `${BASE_URL}/notices/`;
 export const noticeDetailRoute = (noticeId) =>
   `${BASE_URL}/notices/${noticeId}/`;
+export const noticeHistoryRoute = `${BASE_URL}/notices/history/`;
 
 // Guest Room Booking (HM-WF-112)
 export const guestBookingsRoute = `${BASE_URL}/guest-bookings/`;

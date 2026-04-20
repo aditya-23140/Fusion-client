@@ -21,7 +21,6 @@ import {
   Textarea,
   Text,
   Select,
-  Container,
 } from "@mantine/core";
 import {
   IconPlus,
@@ -243,178 +242,173 @@ export default function LeaveManagement() {
   ).length;
 
   return (
-    <Container size="lg" py="xl">
-      <Stack gap="lg">
-        <Group justify="space-between" mb="md">
-          <Title order={2}>Leave Management</Title>
-          {isStudent && (
-            <Button
-              leftSection={<IconPlus size={16} />}
-              onClick={() => setModalOpen(true)}
-            >
-              Apply Leave
-            </Button>
-          )}
+    <Stack gap="lg">
+      <Group justify="space-between" mb="md">
+        <Title order={2}>Leave Management</Title>
+        {isStudent && (
+          <Button
+            leftSection={<IconPlus size={16} />}
+            onClick={() => setModalOpen(true)}
+          >
+            Apply Leave
+          </Button>
+        )}
+      </Group>
+
+      {error && (
+        <Alert icon={<IconAlertCircle size={16} />} color="red" mb="md">
+          {error}
+        </Alert>
+      )}
+
+      {/* Stats for staff */}
+      {isStaff && (
+        <Group grow>
+          <Card withBorder p="lg">
+            <Stack gap={4}>
+              <Text size="sm" fw={500} c="dimmed">
+                Pending
+              </Text>
+              <Text fw={700} size="xl" c="yellow">
+                {pendingCount}
+              </Text>
+            </Stack>
+          </Card>
+          <Card withBorder p="lg">
+            <Stack gap={4}>
+              <Text size="sm" fw={500} c="dimmed">
+                Approved
+              </Text>
+              <Text fw={700} size="xl" c="green">
+                {approvedCount}
+              </Text>
+            </Stack>
+          </Card>
+          <Card withBorder p="lg">
+            <Stack gap={4}>
+              <Text size="sm" fw={500} c="dimmed">
+                Total
+              </Text>
+              <Text fw={700} size="xl">
+                {leaves.length}
+              </Text>
+            </Stack>
+          </Card>
         </Group>
+      )}
 
-        {error && (
-          <Alert icon={<IconAlertCircle size={16} />} color="red" mb="md">
-            {error}
-          </Alert>
-        )}
+      {/* Status filter and Reports for staff */}
+      {isStaff && (
+        <Group justify="space-between">
+          <Select
+            placeholder="Filter by status"
+            clearable
+            data={[
+              { value: "pending", label: "Pending" },
+              { value: "approved", label: "Approved" },
+              { value: "rejected", label: "Rejected" },
+            ]}
+            value={statusFilter}
+            onChange={setStatusFilter}
+            style={{ maxWidth: 250 }}
+          />
+          <Button
+            variant="light"
+            color="blue"
+            leftSection={<IconDownload size={16} />}
+            onClick={handleGenerateReport}
+          >
+            Generate Report
+          </Button>
+        </Group>
+      )}
 
-        {/* Stats for staff */}
-        {isStaff && (
-          <Group grow>
-            <Card withBorder p="lg">
-              <Stack gap={4}>
-                <Text size="sm" fw={500} c="dimmed">
-                  Pending
-                </Text>
-                <Text fw={700} size="xl" c="yellow">
-                  {pendingCount}
-                </Text>
-              </Stack>
-            </Card>
-            <Card withBorder p="lg">
-              <Stack gap={4}>
-                <Text size="sm" fw={500} c="dimmed">
-                  Approved
-                </Text>
-                <Text fw={700} size="xl" c="green">
-                  {approvedCount}
-                </Text>
-              </Stack>
-            </Card>
-            <Card withBorder p="lg">
-              <Stack gap={4}>
-                <Text size="sm" fw={500} c="dimmed">
-                  Total
-                </Text>
-                <Text fw={700} size="xl">
-                  {leaves.length}
-                </Text>
-              </Stack>
-            </Card>
-          </Group>
-        )}
-
-        {/* Status filter and Reports for staff */}
-        {isStaff && (
-          <Group justify="space-between">
-            <Select
-              placeholder="Filter by status"
-              clearable
-              data={[
-                { value: "pending", label: "Pending" },
-                { value: "approved", label: "Approved" },
-                { value: "rejected", label: "Rejected" },
-              ]}
-              value={statusFilter}
-              onChange={setStatusFilter}
-              style={{ maxWidth: 250 }}
-            />
-            <Button
-              variant="light"
-              color="blue"
-              leftSection={<IconDownload size={16} />}
-              onClick={handleGenerateReport}
+      <Tabs value={activeTab} onChange={setActiveTab}>
+        <Tabs.List mb="md">
+          {isStudent && (
+            <Tabs.Tab
+              value="my"
+              leftSection={<IconUser size={14} />}
+              rightSection={<Badge size="sm">{myLeaves.length}</Badge>}
             >
-              Generate Report
+              My Leaves
+            </Tabs.Tab>
+          )}
+          {isStaff && (
+            <Tabs.Tab
+              value="all"
+              leftSection={<IconList size={14} />}
+              rightSection={<Badge size="sm">{leaves.length}</Badge>}
+            >
+              All Leaves
+            </Tabs.Tab>
+          )}
+        </Tabs.List>
+
+        {isStudent && (
+          <Tabs.Panel value="my">
+            <LeavesTable leaves={myLeaves} loading={loading} />
+          </Tabs.Panel>
+        )}
+
+        {isStaff && (
+          <Tabs.Panel value="all">
+            <LeavesTable
+              leaves={filteredLeaves}
+              loading={loading}
+              showActions={userRole === "caretaker"}
+              onApprove={handleApproveLeave}
+              onReject={openRejectModal}
+            />
+          </Tabs.Panel>
+        )}
+      </Tabs>
+
+      <LeaveRequestForm
+        opened={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSubmit={handleCreateLeave}
+        loading={submitting}
+      />
+
+      {/* Reject Modal — UC-002: Decision reason mandatory for rejection */}
+      <Modal
+        opened={rejectModalOpen}
+        onClose={() => setRejectModalOpen(false)}
+        title="Reject Leave Request"
+        centered
+      >
+        <Stack gap="md">
+          {selectedLeave && (
+            <Alert color="yellow" variant="light">
+              <Text size="sm" fw={500}>
+                Leave #{selectedLeave.id}:{" "}
+                {selectedLeave.reason?.substring(0, 80)}...
+              </Text>
+            </Alert>
+          )}
+          <Textarea
+            label="Rejection Reason"
+            placeholder="Provide a reason for rejection (mandatory)"
+            required
+            minRows={3}
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.currentTarget.value)}
+          />
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setRejectModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              color="red"
+              loading={submitting}
+              onClick={handleRejectLeave}
+            >
+              Reject Leave
             </Button>
           </Group>
-        )}
-
-        <Tabs value={activeTab} onChange={setActiveTab}>
-          <Tabs.List mb="md">
-            {isStudent && (
-              <Tabs.Tab
-                value="my"
-                leftSection={<IconUser size={14} />}
-                rightSection={<Badge size="sm">{myLeaves.length}</Badge>}
-              >
-                My Leaves
-              </Tabs.Tab>
-            )}
-            {isStaff && (
-              <Tabs.Tab
-                value="all"
-                leftSection={<IconList size={14} />}
-                rightSection={<Badge size="sm">{leaves.length}</Badge>}
-              >
-                All Leaves
-              </Tabs.Tab>
-            )}
-          </Tabs.List>
-
-          {isStudent && (
-            <Tabs.Panel value="my">
-              <LeavesTable leaves={myLeaves} loading={loading} />
-            </Tabs.Panel>
-          )}
-
-          {isStaff && (
-            <Tabs.Panel value="all">
-              <LeavesTable
-                leaves={filteredLeaves}
-                loading={loading}
-                showActions={userRole === "caretaker"}
-                onApprove={handleApproveLeave}
-                onReject={openRejectModal}
-              />
-            </Tabs.Panel>
-          )}
-        </Tabs>
-
-        <LeaveRequestForm
-          opened={modalOpen}
-          onClose={() => setModalOpen(false)}
-          onSubmit={handleCreateLeave}
-          loading={submitting}
-        />
-
-        {/* Reject Modal — UC-002: Decision reason mandatory for rejection */}
-        <Modal
-          opened={rejectModalOpen}
-          onClose={() => setRejectModalOpen(false)}
-          title="Reject Leave Request"
-          centered
-        >
-          <Stack gap="md">
-            {selectedLeave && (
-              <Alert color="yellow" variant="light">
-                <Text size="sm" fw={500}>
-                  Leave #{selectedLeave.id}:{" "}
-                  {selectedLeave.reason?.substring(0, 80)}...
-                </Text>
-              </Alert>
-            )}
-            <Textarea
-              label="Rejection Reason"
-              placeholder="Provide a reason for rejection (mandatory)"
-              required
-              minRows={3}
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.currentTarget.value)}
-            />
-            <Group justify="flex-end">
-              <Button
-                variant="default"
-                onClick={() => setRejectModalOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                color="red"
-                loading={submitting}
-                onClick={handleRejectLeave}
-              >
-                Reject Leave
-              </Button>
-            </Group>
-          </Stack>
-        </Modal>
-      </Stack>
-    </Container>
+        </Stack>
+      </Modal>
+    </Stack>
   );
 }

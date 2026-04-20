@@ -52,6 +52,7 @@ import {
   // Notice Board (HM-WF-110)
   noticesRoute,
   noticeDetailRoute,
+  noticeHistoryRoute,
   // Guest Room Booking (HM-WF-112)
   guestBookingsRoute,
   guestBookingDetailRoute,
@@ -554,18 +555,29 @@ export const fetchNotices = async () => {
   return response.data;
 };
 
+export const fetchNoticeHistory = async () => {
+  const response = await apiClient.get(noticeHistoryRoute);
+  return response.data;
+};
+
 export const fetchNoticeDetail = async (noticeId) => {
   const response = await apiClient.get(noticeDetailRoute(noticeId));
   return response.data;
 };
 
 export const createNotice = async (noticeData) => {
-  const response = await apiClient.post(noticesRoute, noticeData);
+  const isFormData = noticeData instanceof FormData;
+  const response = await apiClient.post(noticesRoute, noticeData, {
+    headers: isFormData ? { "Content-Type": "multipart/form-data" } : {},
+  });
   return response.data;
 };
 
 export const updateNotice = async (noticeId, data) => {
-  const response = await apiClient.put(noticeDetailRoute(noticeId), data);
+  const isFormData = data instanceof FormData;
+  const response = await apiClient.put(noticeDetailRoute(noticeId), data, {
+    headers: isFormData ? { "Content-Type": "multipart/form-data" } : {},
+  });
   return response.data;
 };
 

@@ -6,7 +6,6 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  Container,
   Card,
   Title,
   Button,
@@ -170,157 +169,155 @@ export default function GuestRoomBookings() {
   const completedBookings = bookings.filter((b) => b.status === "checked_out");
 
   return (
-    <Container size="lg" py="xl">
-      <Stack gap="lg">
-        <Group justify="space-between" align="center">
-          <Title order={2}>Guest Room Bookings</Title>
-          {isStudent && (
-            <Button
-              leftSection={<IconPlus size={18} />}
-              onClick={() => setModalOpen(true)}
-            >
-              Book Room
-            </Button>
-          )}
-        </Group>
-
-        {error && (
-          <Alert icon={<IconAlertCircle />} color="red" title="Error">
-            {error}
-          </Alert>
+    <Stack gap="lg">
+      <Group justify="space-between" align="center">
+        <Title order={2}>Guest Room Bookings</Title>
+        {isStudent && (
+          <Button
+            leftSection={<IconPlus size={18} />}
+            onClick={() => setModalOpen(true)}
+          >
+            Book Room
+          </Button>
         )}
+      </Group>
 
-        <Tabs value={activeTab} onChange={setActiveTab}>
-          <Tabs.List>
-            <Tabs.Tab
-              value="pending"
-              rightSection={<Badge>{pendingBookings.length}</Badge>}
-            >
-              Pending
-            </Tabs.Tab>
-            <Tabs.Tab
-              value="approved"
-              rightSection={<Badge>{approvedBookings.length}</Badge>}
-            >
-              Approved
-            </Tabs.Tab>
-            <Tabs.Tab
-              value="checked_in"
-              rightSection={<Badge>{checkedInBookings.length}</Badge>}
-            >
-              Checked In
-            </Tabs.Tab>
-            <Tabs.Tab
-              value="completed"
-              rightSection={<Badge>{completedBookings.length}</Badge>}
-            >
-              Completed
-            </Tabs.Tab>
-          </Tabs.List>
+      {error && (
+        <Alert icon={<IconAlertCircle />} color="red" title="Error">
+          {error}
+        </Alert>
+      )}
 
-          <Tabs.Panel value="pending" pt="xl">
-            <Stack gap="md">
-              {pendingBookings.length === 0 ? (
-                <Card withBorder p="xl">
-                  <p>No pending bookings</p>
-                </Card>
-              ) : (
-                pendingBookings.map((booking) => (
-                  <GuestBookingCard
-                    key={booking.id}
-                    booking={booking}
-                    onApprove={() => handleApprove(booking)}
-                    onReject={() => handleReject(booking)}
-                    canApprove={isStaff}
-                    canReject={isStaff}
-                    showActions={isStaff}
-                  />
-                ))
-              )}
-            </Stack>
-          </Tabs.Panel>
+      <Tabs value={activeTab} onChange={setActiveTab}>
+        <Tabs.List>
+          <Tabs.Tab
+            value="pending"
+            rightSection={<Badge>{pendingBookings.length}</Badge>}
+          >
+            Pending
+          </Tabs.Tab>
+          <Tabs.Tab
+            value="approved"
+            rightSection={<Badge>{approvedBookings.length}</Badge>}
+          >
+            Approved
+          </Tabs.Tab>
+          <Tabs.Tab
+            value="checked_in"
+            rightSection={<Badge>{checkedInBookings.length}</Badge>}
+          >
+            Checked In
+          </Tabs.Tab>
+          <Tabs.Tab
+            value="completed"
+            rightSection={<Badge>{completedBookings.length}</Badge>}
+          >
+            Completed
+          </Tabs.Tab>
+        </Tabs.List>
 
-          <Tabs.Panel value="approved" pt="xl">
-            <Stack gap="md">
-              {approvedBookings.length === 0 ? (
-                <Card withBorder p="xl">
-                  <p>No approved bookings</p>
-                </Card>
-              ) : (
-                approvedBookings.map((booking) => (
-                  <GuestBookingCard
-                    key={booking.id}
-                    booking={booking}
-                    onCheckIn={() => handleCheckIn(booking)}
-                    canCheckIn={isStaff}
-                    showActions={isStaff}
-                  />
-                ))
-              )}
-            </Stack>
-          </Tabs.Panel>
+        <Tabs.Panel value="pending" pt="xl">
+          <Stack gap="md">
+            {pendingBookings.length === 0 ? (
+              <Card withBorder p="xl">
+                <p>No pending bookings</p>
+              </Card>
+            ) : (
+              pendingBookings.map((booking) => (
+                <GuestBookingCard
+                  key={booking.id}
+                  booking={booking}
+                  onApprove={() => handleApprove(booking)}
+                  onReject={() => handleReject(booking)}
+                  canApprove={isStaff}
+                  canReject={isStaff}
+                  showActions={isStaff}
+                />
+              ))
+            )}
+          </Stack>
+        </Tabs.Panel>
 
-          <Tabs.Panel value="checked_in" pt="xl">
-            <Stack gap="md">
-              {checkedInBookings.length === 0 ? (
-                <Card withBorder p="xl">
-                  <p>No checked in guests</p>
-                </Card>
-              ) : (
-                checkedInBookings.map((booking) => (
-                  <GuestBookingCard
-                    key={booking.id}
-                    booking={booking}
-                    onCheckOut={() => handleCheckOut(booking)}
-                    canCheckOut={isStaff}
-                    showActions={isStaff}
-                  />
-                ))
-              )}
-            </Stack>
-          </Tabs.Panel>
+        <Tabs.Panel value="approved" pt="xl">
+          <Stack gap="md">
+            {approvedBookings.length === 0 ? (
+              <Card withBorder p="xl">
+                <p>No approved bookings</p>
+              </Card>
+            ) : (
+              approvedBookings.map((booking) => (
+                <GuestBookingCard
+                  key={booking.id}
+                  booking={booking}
+                  onCheckIn={() => handleCheckIn(booking)}
+                  canCheckIn={isStaff}
+                  showActions={isStaff}
+                />
+              ))
+            )}
+          </Stack>
+        </Tabs.Panel>
 
-          <Tabs.Panel value="completed" pt="xl">
-            <Stack gap="md">
-              {completedBookings.length === 0 ? (
-                <Card withBorder p="xl">
-                  <p>No completed bookings</p>
-                </Card>
-              ) : (
-                completedBookings.map((booking) => (
-                  <GuestBookingCard
-                    key={booking.id}
-                    booking={booking}
-                    showActions={false}
-                  />
-                ))
-              )}
-            </Stack>
-          </Tabs.Panel>
-        </Tabs>
+        <Tabs.Panel value="checked_in" pt="xl">
+          <Stack gap="md">
+            {checkedInBookings.length === 0 ? (
+              <Card withBorder p="xl">
+                <p>No checked in guests</p>
+              </Card>
+            ) : (
+              checkedInBookings.map((booking) => (
+                <GuestBookingCard
+                  key={booking.id}
+                  booking={booking}
+                  onCheckOut={() => handleCheckOut(booking)}
+                  canCheckOut={isStaff}
+                  showActions={isStaff}
+                />
+              ))
+            )}
+          </Stack>
+        </Tabs.Panel>
 
-        <GuestRoomBookingForm
-          opened={modalOpen}
-          onClose={() => setModalOpen(false)}
-          onSubmit={handleSubmitBooking}
-          loading={submitting}
-        />
+        <Tabs.Panel value="completed" pt="xl">
+          <Stack gap="md">
+            {completedBookings.length === 0 ? (
+              <Card withBorder p="xl">
+                <p>No completed bookings</p>
+              </Card>
+            ) : (
+              completedBookings.map((booking) => (
+                <GuestBookingCard
+                  key={booking.id}
+                  booking={booking}
+                  showActions={false}
+                />
+              ))
+            )}
+          </Stack>
+        </Tabs.Panel>
+      </Tabs>
 
-        <ApproveGuestBookingModal
-          opened={approveModalOpen}
-          onClose={() => {
-            setApproveModalOpen(false);
-            setSelectedBooking(null);
-          }}
-          booking={selectedBooking}
-          hallId={userHallId}
-          onApproveSuccess={() => {
-            loadData();
-            setApproveModalOpen(false);
-            setSelectedBooking(null);
-          }}
-        />
-      </Stack>
-    </Container>
+      <GuestRoomBookingForm
+        opened={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSubmit={handleSubmitBooking}
+        loading={submitting}
+      />
+
+      <ApproveGuestBookingModal
+        opened={approveModalOpen}
+        onClose={() => {
+          setApproveModalOpen(false);
+          setSelectedBooking(null);
+        }}
+        booking={selectedBooking}
+        hallId={userHallId}
+        onApproveSuccess={() => {
+          loadData();
+          setApproveModalOpen(false);
+          setSelectedBooking(null);
+        }}
+      />
+    </Stack>
   );
 }

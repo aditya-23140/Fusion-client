@@ -21,7 +21,7 @@ import {
   Flex,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { modals, ModalsProvider } from "@mantine/modals";
+import { modals } from "@mantine/modals";
 import {
   IconBuildingSkyscraper,
   IconPlus,
@@ -292,98 +292,96 @@ export default function HallManagement() {
 
   // ── Render ─────────────────────────────────────────────────
   return (
-    <ModalsProvider>
-      <Stack gap="lg">
-        {/* Header */}
-        <Paper
-          p="lg"
-          radius="md"
-          style={{
-            background:
-              "linear-gradient(135deg, rgba(34,139,230,0.04), rgba(32,201,151,0.08))",
-          }}
-        >
-          <Flex justify="space-between" align="center">
-            <Group gap="md">
-              <IconBuildingSkyscraper
-                size={34}
-                color="var(--mantine-color-blue-6)"
-              />
-              <div>
-                <Title order={2} fw={800} style={{ letterSpacing: "-0.5px" }}>
-                  Hall Management
-                </Title>
-                <Text size="sm" c="dimmed" fw={500}>
-                  Admin Portal — Configure hostels, staff, and status
-                </Text>
-              </div>
-            </Group>
-            <Button
-              id="create-hostel-btn"
-              leftSection={<IconPlus size={18} />}
-              radius="md"
-              size="md"
-              onClick={() => setCreateModalOpen(true)}
-              variant="gradient"
-              gradient={{ from: "blue", to: "cyan" }}
-            >
-              Setup New Hostel
-            </Button>
-          </Flex>
-        </Paper>
+    <Stack gap="lg">
+      {/* Header */}
+      <Paper
+        p="lg"
+        radius="md"
+        style={{
+          background:
+            "linear-gradient(135deg, rgba(34,139,230,0.04), rgba(32,201,151,0.08))",
+        }}
+      >
+        <Flex justify="space-between" align="center">
+          <Group gap="md">
+            <IconBuildingSkyscraper
+              size={34}
+              color="var(--mantine-color-blue-6)"
+            />
+            <div>
+              <Title order={2} fw={800} style={{ letterSpacing: "-0.5px" }}>
+                Hall Management
+              </Title>
+              <Text size="sm" c="dimmed" fw={500}>
+                Admin Portal — Configure hostels, staff, and status
+              </Text>
+            </div>
+          </Group>
+          <Button
+            id="create-hostel-btn"
+            leftSection={<IconPlus size={18} />}
+            radius="md"
+            size="md"
+            onClick={() => setCreateModalOpen(true)}
+            variant="gradient"
+            gradient={{ from: "blue", to: "cyan" }}
+          >
+            Setup New Hostel
+          </Button>
+        </Flex>
+      </Paper>
 
-        <HostelList
-          hostels={hostels}
-          loading={loading}
-          onStatusChange={handleStatusChange}
-          onAssignWarden={handleOpenAssignWarden}
-          onAssignCaretaker={handleOpenAssignCaretaker}
-          onViewStaff={handleViewStaff}
-          onBulkBatchAllot={handleOpenBatchAllot}
-          onRemove={handleDeleteHostel}
+      <HostelList
+        hostels={hostels}
+        loading={loading}
+        onStatusChange={handleStatusChange}
+        onAssignWarden={handleOpenAssignWarden}
+        onAssignCaretaker={handleOpenAssignCaretaker}
+        onViewStaff={handleViewStaff}
+        onBulkBatchAllot={handleOpenBatchAllot}
+        onRemove={handleDeleteHostel}
+      />
+
+      {/* Create Hostel Modal */}
+      <HostelCreateModal
+        opened={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        onSubmit={handleCreateHostel}
+        loading={createLoading}
+      />
+
+      {/* Assign Staff Modal */}
+      <AssignStaffModal
+        opened={assignModalOpen}
+        onClose={() => setAssignModalOpen(false)}
+        role={assignRole}
+        hostelName={assignHostel?.name}
+        onSubmit={handleAssignStaff}
+        loading={assignLoading}
+      />
+
+      {/* Staff History Modal */}
+      <Modal
+        opened={staffModalOpen}
+        onClose={() => setStaffModalOpen(false)}
+        title={`Staff Assignment History — ${staffModalHostel?.name}`}
+        size="xl"
+        radius="md"
+      >
+        <StaffAssignmentTable
+          assignments={staffAssignments}
+          loading={staffLoading}
+          onRemove={handleRemoveStaff}
         />
+      </Modal>
 
-        {/* Create Hostel Modal */}
-        <HostelCreateModal
-          opened={createModalOpen}
-          onClose={() => setCreateModalOpen(false)}
-          onSubmit={handleCreateHostel}
-          loading={createLoading}
-        />
-
-        {/* Assign Staff Modal */}
-        <AssignStaffModal
-          opened={assignModalOpen}
-          onClose={() => setAssignModalOpen(false)}
-          role={assignRole}
-          hostelName={assignHostel?.name}
-          onSubmit={handleAssignStaff}
-          loading={assignLoading}
-        />
-
-        {/* Staff History Modal */}
-        <Modal
-          opened={staffModalOpen}
-          onClose={() => setStaffModalOpen(false)}
-          title={`Staff Assignment History — ${staffModalHostel?.name}`}
-          size="xl"
-          radius="md"
-        >
-          <StaffAssignmentTable
-            assignments={staffAssignments}
-            loading={staffLoading}
-            onRemove={handleRemoveStaff}
-          />
-        </Modal>
-
-        {/* Bulk Batch Allotment Modal */}
-        <BatchAllocationModal
-          opened={batchModalOpen}
-          onClose={() => setBatchModalOpen(false)}
-          hostel={batchModalHostel}
-          onFinish={loadHostels}
-        />
-      </Stack>
-    </ModalsProvider>
+      {/* Bulk Batch Allotment Modal */}
+      <BatchAllocationModal
+        opened={batchModalOpen}
+        onClose={() => setBatchModalOpen(false)}
+        hostel={batchModalHostel}
+        onFinish={loadHostels}
+      />
+    </Stack>
   );
 }

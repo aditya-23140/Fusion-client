@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Card, Title, Group, Alert, Select } from "@mantine/core";
+import { Card, Title, Group, Alert, Select, Stack } from "@mantine/core";
 import { IconAlertCircle } from "@tabler/icons-react";
 import AttendanceTable from "./components/AttendanceTable";
 import { fetchAttendance, fetchHalls } from "./api";
@@ -52,25 +52,30 @@ export default function AttendanceManagement() {
   }, [loadAttendance]);
 
   return (
-    <Card shadow="sm" padding="lg" radius="md" withBorder>
-      <Group justify="space-between" mb="md">
-        <Title order={3}>Attendance Records</Title>
-        <Select
-          placeholder="Select Hall"
-          data={halls.map((h) => ({ value: String(h.id), label: h.hall_name }))}
-          value={selectedHall}
-          onChange={setSelectedHall}
-          style={{ width: 200 }}
-        />
-      </Group>
+    <Stack gap="lg">
+      <Card shadow="sm" padding="lg" radius="md" withBorder>
+        <Group justify="space-between" mb="md">
+          <Title order={3}>Attendance Records</Title>
+          <Select
+            placeholder="Select Hall"
+            data={halls.map((h) => ({
+              value: String(h.id),
+              label: h.hall_name,
+            }))}
+            value={selectedHall}
+            onChange={setSelectedHall}
+            style={{ width: 200 }}
+          />
+        </Group>
 
-      {error && (
-        <Alert icon={<IconAlertCircle size={16} />} color="red" mb="md">
-          {error}
-        </Alert>
-      )}
+        {error && (
+          <Alert icon={<IconAlertCircle size={16} />} color="red" mb="md">
+            {error}
+          </Alert>
+        )}
 
-      <AttendanceTable attendance={attendance} loading={loading} />
-    </Card>
+        <AttendanceTable attendance={attendance} loading={loading} />
+      </Card>
+    </Stack>
   );
 }
