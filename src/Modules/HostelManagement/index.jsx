@@ -41,8 +41,13 @@ export default function HostelManagementPage() {
         tabItems: [
           { title: "Hall Management" },
           { title: "Hostel Allocation" },
+          { title: "Inventory" },
         ],
-        tabComponents: [HallManagement, AccommodationAllotment],
+        tabComponents: [
+          HallManagement,
+          AccommodationAllotment,
+          InventoryManagement,
+        ],
       };
     }
 
@@ -81,6 +86,7 @@ export default function HostelManagementPage() {
           { title: "Leave Requests" },
           { title: "Complaints" },
           { title: "Fines" },
+          { title: "Inventory" },
           { title: "Attendance" },
           { title: "Hostel Allocation" },
         ],
@@ -90,6 +96,7 @@ export default function HostelManagementPage() {
           LeaveManagement,
           ComplaintManagement,
           FineManagement,
+          InventoryManagement,
           AttendanceManagement,
           AccommodationAllotment,
         ],

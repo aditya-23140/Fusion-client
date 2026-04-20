@@ -47,7 +47,6 @@ import {
   scheduleDetailRoute,
   // Inventory Management (HM-WF-108)
   inventoryRoute,
-  inventoryDetailRoute,
   // Attendance Management
   listAttendanceRoute,
   // Notice Board (HM-WF-110)
@@ -422,31 +421,126 @@ export const deleteSchedule = async (scheduleId) => {
 };
 
 // ══════════════════════════════════════════════════════════════
-// HM-WF-108: INVENTORY MANAGEMENT API CALLS
+// HM-WF-108: MODERN INVENTORY MANAGEMENT API CALLS
 // ══════════════════════════════════════════════════════════════
 
-export const createInventory = async (inventoryData) => {
-  const response = await apiClient.post(inventoryRoute, inventoryData);
+/**
+ * Fetch all inventory items (scoped to roles)
+ */
+export const fetchInventoryItems = async () => {
+  const response = await apiClient.get(`${inventoryRoute}items/`);
   return response.data;
 };
 
-export const fetchInventory = async () => {
-  const response = await apiClient.get(inventoryRoute);
+/**
+ * Record an inventory inspection (Caretaker only)
+ * @param {number} itemId
+ * @param {Object} data - { actual_qty, condition, remarks }
+ */
+export const recordInventoryInspection = async (itemId, data) => {
+  const response = await apiClient.post(
+    `${inventoryRoute}items/${itemId}/inspect/`,
+    data,
+  );
   return response.data;
 };
 
-export const fetchInventoryDetail = async (inventoryId) => {
-  const response = await apiClient.get(inventoryDetailRoute(inventoryId));
+/**
+ * Delete inventory item (Warden/Admin only)
+ */
+export const deleteInventoryItem = async (itemId) => {
+  const response = await apiClient.delete(`${inventoryRoute}items/${itemId}/`);
   return response.data;
 };
 
-export const updateInventory = async (inventoryId, data) => {
-  const response = await apiClient.put(inventoryDetailRoute(inventoryId), data);
+/**
+ * Update inventory record directly (Caretaker only)
+ * @param {number} itemId
+ * @param {Object} data - { current_quantity, condition, remarks }
+ */
+export const updateInventoryRecord = async (itemId, data) => {
+  const response = await apiClient.post(
+    `${inventoryRoute}items/${itemId}/update_record/`,
+    data,
+  );
   return response.data;
 };
 
-export const deleteInventory = async (inventoryId) => {
-  const response = await apiClient.delete(inventoryDetailRoute(inventoryId));
+/**
+ * Review resource procurement request (Admin/Warden only)
+ */
+export const reviewResourceRequest = async (id, data) => {
+  const response = await apiClient.post(
+    `${inventoryRoute}resource-requests/${id}/review/`,
+    data,
+  );
+  return response.data;
+};
+
+/**
+ * Bulk upload inventory from Excel
+ */
+export const bulkUploadInventoryItems = async (hostelId, file) => {
+  const formData = new FormData();
+  formData.append("hostel_id", hostelId);
+  formData.append("file", file);
+  const response = await apiClient.post(
+    `${inventoryRoute}items/bulk-upload/`,
+    formData,
+    {
+      headers: { "Content-Type": "multipart/form-data" },
+    },
+  );
+  return response.data;
+};
+
+/**
+ * Fetch all inventory discrepancies
+ */
+export const fetchInventoryDiscrepancies = async () => {
+  const response = await apiClient.get(`${inventoryRoute}discrepancies/`);
+  return response.data;
+};
+
+/**
+ * Resolve a discrepancy by syncing inventory
+ */
+export const resolveDiscrepancy = async (id) => {
+  const response = await apiClient.post(
+    `${inventoryRoute}discrepancies/${id}/resolve/`,
+  );
+  return response.data;
+};
+
+/**
+ * Fetch inventory audit trail
+ * @param {number} itemId - Optional filter
+ */
+export const fetchInventoryAuditTrail = async (itemId = null) => {
+  const params = itemId ? { item_id: itemId } : {};
+  const response = await apiClient.get(`${inventoryRoute}audit-trail/`, {
+    params,
+  });
+  return response.data;
+};
+
+/**
+ * Fetch all resource procurement requests
+ */
+export const fetchResourceRequests = async () => {
+  const response = await apiClient.get(`${inventoryRoute}resource-requests/`);
+  return response.data;
+};
+
+/**
+ * Submit a new resource procurement request (Caretaker only)
+ * @param {Object} data - { hostel, request_type, item_name, quantity, justification }
+ */
+export const submitResourceRequest = async (data) => {
+  const response = await apiClient.post(
+    `${inventoryRoute}resource-requests/`,
+    data,
+  );
   return response.data;
 };
 

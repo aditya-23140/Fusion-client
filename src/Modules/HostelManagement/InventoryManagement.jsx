@@ -1,317 +1,528 @@
 /**
- * InventoryManagement - Thin View
- * Manages hostel inventory
- * Orchestrates components and handles state, calls api.js
+ * InventoryManagement - MODERNIZED VIEW (HM-WF-108)
+ * Orchestrates role-based inventory workflows: inspections, updates, and procurement.
  */
 
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Container,
-  Card,
+  Tabs,
   Title,
-  Button,
-  Group,
-  Alert,
   Stack,
+  Group,
+  Paper,
+  Text,
   Badge,
-  Modal,
-  TextInput,
-  NumberInput,
-  Select,
-  Textarea,
+  Alert,
+  Button,
 } from "@mantine/core";
-import { IconPlus, IconAlertCircle } from "@tabler/icons-react";
-import { notifications } from "@mantine/notifications";
-import { useForm } from "@mantine/form";
-import InventoryList from "./components/InventoryList";
 import {
-  fetchInventory,
-  createInventory,
-  updateInventory,
-  deleteInventory,
+  IconClipboardList,
+  IconAlertTriangle,
+  IconTruckLoading,
+  IconAlertCircle,
+  IconUpload,
+} from "@tabler/icons-react";
+import { useSelector } from "react-redux";
+import { notifications } from "@mantine/notifications";
+
+import PropTypes from "prop-types";
+import InventoryTable from "./components/inventory/InventoryTable";
+import InspectionModal from "./components/inventory/InspectionModal";
+import ResourceRequestForm from "./components/inventory/ResourceRequestForm";
+import DiscrepancyTable from "./components/inventory/DiscrepancyTable";
+import AuditTrailDrawer from "./components/inventory/AuditTrailDrawer";
+import BulkUploadModal from "./components/inventory/BulkUploadModal";
+
+import {
+  fetchInventoryItems,
+  recordInventoryInspection,
+  updateInventoryRecord,
+  fetchInventoryDiscrepancies,
+  fetchInventoryAuditTrail,
+  fetchResourceRequests,
+  submitResourceRequest,
+  reviewResourceRequest,
+  bulkUploadInventoryItems,
+  deleteInventoryItem,
+  resolveDiscrepancy,
+  fetchHalls,
 } from "./api";
 
 export default function InventoryManagement() {
+  const userRole = useSelector((state) => state.user.role);
+  const [activeTab, setActiveTab] = useState("inventory");
+
+  // Data State (initialized to empty arrays)
   const [items, setItems] = useState([]);
+  const [discrepancies, setDiscrepancies] = useState([]);
+  const [resourceRequests, setResourceRequests] = useState([]);
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [halls, setHalls] = useState([]);
+
+  // UI State
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [modalMode, setModalMode] = useState(null); // 'inspect' or 'update'
+  const [drawerOpened, setDrawerOpened] = useState(false);
+  const [bulkModalOpened, setBulkModalOpened] = useState(false);
+  const [auditLoading, setAuditLoading] = useState(false);
 
-  const form = useForm({
-    initialValues: {
-      name: "",
-      category: "",
-      current_quantity: 0,
-      minimum_quantity: 0,
-      maximum_quantity: 0,
-      description: "",
-    },
-    validate: {
-      name: (value) => (value ? null : "Item name is required"),
-      category: (value) => (value ? null : "Category is required"),
-      current_quantity: (value) =>
-        value >= 0 ? null : "Current quantity must be non-negative",
-      minimum_quantity: (value) =>
-        value >= 0 ? null : "Minimum quantity must be non-negative",
-    },
-  });
+  // ══════════════════════════════════════════════════════════════
+  // DATA LOADING
+  // ══════════════════════════════════════════════════════════════
 
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
+      const [itemsRes, discRes, reqRes, hallsData] = await Promise.all([
+        fetchInventoryItems(),
+        fetchInventoryDiscrepancies(),
+        fetchResourceRequests(),
+        fetchHalls(),
+      ]);
+
+      // Unpack DRF paginated responses if necessary
+      setItems(itemsRes?.results || itemsRes || []);
+      setDiscrepancies(discRes?.results || discRes || []);
+      setResourceRequests(reqRes?.results || reqRes || []);
+      setHalls(hallsData);
       setError(null);
-      const inventoryData = await fetchInventory();
-      setItems(inventoryData);
     } catch (err) {
-      setError("Failed to load inventory. Please try again.");
+      setError("Failed to synchronize inventory data. Check your connection.");
       console.error(err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [userRole]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  const handleAddItem = async (values) => {
-    try {
-      setSubmitting(true);
-      await createInventory(values);
-      notifications.show({
-        title: "Success",
-        message: "Item added successfully",
-        color: "green",
-      });
-      form.reset();
-      setModalOpen(false);
-      loadData();
-    } catch (err) {
-      notifications.show({
-        title: "Error",
-        message: err.response?.data?.error || "Failed to add item",
-        color: "red",
-      });
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  // ══════════════════════════════════════════════════════════════
+  // EVENT HANDLERS
+  // ══════════════════════════════════════════════════════════════
 
-  const handleUpdateItem = async (values) => {
+  const handleInspectionSubmit = async (data) => {
     try {
-      setSubmitting(true);
-      await updateInventory(editingItem.id, values);
-      notifications.show({
-        title: "Success",
-        message: "Item updated successfully",
-        color: "green",
-      });
-      form.reset();
-      setModalOpen(false);
-      setEditingItem(null);
-      loadData();
-    } catch (err) {
-      notifications.show({
-        title: "Error",
-        message: err.response?.data?.error || "Failed to update item",
-        color: "red",
-      });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleDeleteItem = async (item) => {
-    if (window.confirm("Are you sure you want to delete this item?")) {
-      try {
-        await deleteInventory(item.id);
+      if (modalMode === "inspect") {
+        await recordInventoryInspection(data.itemId, {
+          actual_qty: data.quantity,
+          condition: data.condition,
+          remarks: data.remarks,
+        });
         notifications.show({
-          title: "Success",
-          message: "Item deleted successfully",
+          title: "Inspection Recorded",
+          message: "Discrepancies (if any) have been logged.",
           color: "green",
         });
-        loadData();
-      } catch (err) {
+      } else {
+        await updateInventoryRecord(data.itemId, {
+          current_quantity: data.quantity,
+          condition: data.condition,
+          remarks: data.remarks,
+        });
         notifications.show({
-          title: "Error",
-          message: err.response?.data?.error || "Failed to delete item",
-          color: "red",
+          title: "Record Updated",
+          message: "Quantity and condition updated successfully.",
+          color: "blue",
         });
       }
+      setModalMode(null);
+      loadData();
+    } catch (err) {
+      notifications.show({
+        title: "Action Failed",
+        message: err.response?.data?.detail || "Could not save change.",
+        color: "red",
+      });
     }
   };
 
-  const handleEdit = (item) => {
-    setEditingItem(item);
-    form.setValues({
-      name: item.name,
-      category: item.category,
-      current_quantity: item.current_quantity,
-      minimum_quantity: item.minimum_quantity,
-      maximum_quantity: item.maximum_quantity || 0,
-      description: item.description || "",
-    });
-    setModalOpen(true);
+  const handleResourceSubmit = async (data) => {
+    try {
+      setLoading(true);
+      await submitResourceRequest(data);
+      notifications.show({
+        title: "Request Submitted",
+        message: "Warden/Admin will review your procurement request.",
+        color: "green",
+      });
+      loadData();
+    } catch (err) {
+      notifications.show({
+        title: "Submission Failed",
+        message: err.response?.data?.detail || "Invalid request.",
+        color: "red",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const lowStockCount = items.filter(
-    (item) => item.current_quantity <= item.minimum_quantity,
-  ).length;
-  const outOfStockCount = items.filter(
-    (item) => item.current_quantity === 0,
+  const handleViewHistory = async (item) => {
+    setSelectedItem(item);
+    setDrawerOpened(true);
+    setAuditLoading(true);
+    try {
+      const logs = await fetchInventoryAuditTrail(item.id);
+      setAuditLogs(logs);
+    } catch (err) {
+      notifications.show({
+        title: "History Unavailable",
+        message: "Could not fetch audit trail.",
+        color: "red",
+      });
+    } finally {
+      setAuditLoading(false);
+    }
+  };
+  const handleDeleteInventoryItem = async (itemId) => {
+    try {
+      setLoading(true);
+      await deleteInventoryItem(itemId);
+      notifications.show({
+        title: "Item Deleted",
+        message: "Inventory record and audit trail removed.",
+        color: "gray",
+      });
+      loadData();
+    } catch (err) {
+      notifications.show({
+        title: "Delete Failed",
+        message: err.response?.data?.detail || "Action unauthorized.",
+        color: "red",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResolveDiscrepancy = async (discrepancyId) => {
+    try {
+      setLoading(true);
+      await resolveDiscrepancy(discrepancyId);
+      notifications.show({
+        title: "Discrepancy Resolved",
+        message: "Inventory synced to actual quantity.",
+        color: "green",
+      });
+      loadData();
+    } catch (err) {
+      notifications.show({
+        title: "Resolution Failed",
+        message: err.response?.data?.detail || "Could not resolve.",
+        color: "red",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBulkUpload = async (file) => {
+    if (halls.length === 0) {
+      notifications.show({
+        title: "No Hostel Selected",
+        message: "Please ensure you have an assigned hostel.",
+        color: "red",
+      });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      // For simplicity, upload to the first assigned hostel if multiple exist,
+      // or ideally add a selector. Here we assume the user picks the hostel
+      // context. We'll use the first one as default for now.
+      const hostelId = halls[0].hall_id;
+      const results = await bulkUploadInventoryItems(hostelId, file);
+
+      notifications.show({
+        title: "Bulk Upload Complete",
+        message: `Created: ${results.created}, Updated: ${results.updated}. Errors: ${results.errors.length}`,
+        color: results.errors.length > 0 ? "orange" : "green",
+      });
+
+      setBulkModalOpened(false);
+      loadData();
+    } catch (err) {
+      notifications.show({
+        title: "Upload Failed",
+        message: err.response?.data?.detail || "Invalid Excel format.",
+        color: "red",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ══════════════════════════════════════════════════════════════
+  // RENDER HELPERS
+  // ══════════════════════════════════════════════════════════════
+
+  const safeItems = Array.isArray(items) ? items : [];
+  const lowStockCount = safeItems.filter(
+    (i) => i.current_quantity <= i.expected_quantity * 0.2,
   ).length;
 
   return (
-    <Container size="lg" py="xl">
+    <Container size="xl" py="lg">
       <Stack gap="lg">
-        <Group justify="space-between" align="center">
-          <Title order={2}>Inventory Management</Title>
-          <Button
-            leftSection={<IconPlus size={18} />}
-            onClick={() => {
-              setEditingItem(null);
-              form.reset();
-              setModalOpen(true);
-            }}
-          >
-            Add Item
-          </Button>
+        <Group justify="space-between">
+          <div>
+            <Title order={2}>Inventory & Resource Management</Title>
+            <Text size="sm" c="dimmed">
+              HM-WF-108: Modernized stock tracking and procurement workflow
+            </Text>
+          </div>
+          <Group>
+            {(userRole === "super_admin" || userRole === "warden") && (
+              <Button
+                variant="light"
+                leftSection={<IconUpload size={16} />}
+                onClick={() => setBulkModalOpened(true)}
+              >
+                Bulk Upload
+              </Button>
+            )}
+            {lowStockCount > 0 && (
+              <Badge
+                color="red"
+                variant="filled"
+                size="lg"
+                leftSection={<IconAlertTriangle size={14} />}
+              >
+                {lowStockCount} items critically low
+              </Badge>
+            )}
+          </Group>
         </Group>
 
         {error && (
-          <Alert icon={<IconAlertCircle />} color="red" title="Error">
+          <Alert
+            icon={<IconAlertCircle />}
+            title="Sync Error"
+            color="red"
+            variant="light"
+          >
             {error}
           </Alert>
         )}
 
-        <Group grow>
-          <Card withBorder p="lg">
-            <Stack gap={4}>
-              <span>Total Items</span>
-              <Badge size="lg">{items.length}</Badge>
-            </Stack>
-          </Card>
-          <Card withBorder p="lg">
-            <Stack gap={4}>
-              <span>Low Stock</span>
-              <Badge size="lg" color="orange">
-                {lowStockCount}
-              </Badge>
-            </Stack>
-          </Card>
-          <Card withBorder p="lg">
-            <Stack gap={4}>
-              <span>Out of Stock</span>
-              <Badge size="lg" color="red">
-                {outOfStockCount}
-              </Badge>
-            </Stack>
-          </Card>
-        </Group>
-
-        <InventoryList
-          items={items}
-          loading={loading}
-          onEdit={handleEdit}
-          onDelete={handleDeleteItem}
-          showActions
-        />
-
-        <Modal
-          opened={modalOpen}
-          onClose={() => setModalOpen(false)}
-          title={editingItem ? "Edit Item" : "Add New Item"}
-          centered
+        <Tabs
+          value={activeTab}
+          onChange={setActiveTab}
+          variant="outline"
+          radius="md"
         >
-          {" "}
-          <form
-            onSubmit={form.onSubmit((values) =>
-              editingItem ? handleUpdateItem(values) : handleAddItem(values),
+          <Tabs.List>
+            <Tabs.Tab
+              value="inventory"
+              leftSection={<IconClipboardList size={16} />}
+            >
+              Inventory List
+            </Tabs.Tab>
+            {userRole !== "super_admin" && (
+              <>
+                <Tabs.Tab
+                  value="discrepancies"
+                  leftSection={<IconAlertTriangle size={16} />}
+                >
+                  Discrepancies
+                </Tabs.Tab>
+                <Tabs.Tab
+                  value="requests"
+                  leftSection={<IconTruckLoading size={16} />}
+                >
+                  Resource Requests
+                </Tabs.Tab>
+              </>
             )}
-          >
-            <Stack gap="md">
-              <TextInput
-                label="Item Name"
-                placeholder="Name of the inventory item"
-                value={form.values.name}
-                onChange={(e) =>
-                  form.setFieldValue("name", e.currentTarget.value)
-                }
-                error={form.errors.name}
-              />
+          </Tabs.List>
 
-              <Select
-                label="Category"
-                placeholder="Select category"
-                data={[
-                  "Maintenance",
-                  "Cleaning",
-                  "Bedding",
-                  "Equipment",
-                  "Other",
-                ]}
-                value={form.values.category}
-                onChange={(value) => form.setFieldValue("category", value)}
-                error={form.errors.category}
+          <Tabs.Panel value="inventory" pt="xl">
+            <Paper withBorder radius="md" p="md">
+              <InventoryTable
+                items={items}
+                loading={loading}
+                userRole={userRole}
+                onInspect={(item) => {
+                  setSelectedItem(item);
+                  setModalMode("inspect");
+                }}
+                onUpdate={(item) => {
+                  setSelectedItem(item);
+                  setModalMode("update");
+                }}
+                onDelete={handleDeleteInventoryItem}
+                onViewHistory={handleViewHistory}
               />
+            </Paper>
+          </Tabs.Panel>
 
-              <NumberInput
-                label="Current Quantity"
-                placeholder="Current stock level"
-                min={0}
-                value={form.values.current_quantity}
-                onChange={(value) =>
-                  form.setFieldValue("current_quantity", value)
-                }
-                error={form.errors.current_quantity}
+          <Tabs.Panel value="discrepancies" pt="xl">
+            <Paper withBorder radius="md" p="md">
+              <DiscrepancyTable
+                discrepancies={discrepancies}
+                loading={loading}
+                userRole={userRole}
+                onResolve={handleResolveDiscrepancy}
               />
+            </Paper>
+          </Tabs.Panel>
 
-              <NumberInput
-                label="Minimum Quantity"
-                placeholder="Reorder threshold"
-                min={0}
-                value={form.values.minimum_quantity}
-                onChange={(value) =>
-                  form.setFieldValue("minimum_quantity", value)
-                }
-                error={form.errors.minimum_quantity}
-              />
+          <Tabs.Panel value="requests" pt="xl">
+            <Stack gap="xl">
+              {userRole === "caretaker" && (
+                <ResourceRequestForm
+                  hostels={halls}
+                  onSubmit={handleResourceSubmit}
+                  loading={loading}
+                />
+              )}
 
-              <NumberInput
-                label="Maximum Quantity"
-                placeholder="Maximum stock level"
-                min={0}
-                value={form.values.maximum_quantity}
-                onChange={(value) =>
-                  form.setFieldValue("maximum_quantity", value)
-                }
-                error={form.errors.maximum_quantity}
-              />
-
-              <Textarea
-                label="Description"
-                placeholder="Additional details"
-                value={form.values.description}
-                onChange={(e) =>
-                  form.setFieldValue("description", e.currentTarget.value)
-                }
-                error={form.errors.description}
-              />
-
-              <Group justify="flex-end">
-                <Button variant="default" onClick={() => setModalOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit" loading={submitting}>
-                  {editingItem ? "Update" : "Add"} Item
-                </Button>
-              </Group>
+              <Paper withBorder radius="md" p="md">
+                <Title order={4} mb="md">
+                  Procurement Status
+                </Title>
+                <ResourceRequestList
+                  requests={resourceRequests}
+                  userRole={userRole}
+                  onReview={(id, data) =>
+                    reviewResourceRequest(id, data).then(() => loadData())
+                  }
+                />
+              </Paper>
             </Stack>
-          </form>
-        </Modal>
+          </Tabs.Panel>
+        </Tabs>
       </Stack>
+
+      <InspectionModal
+        opened={!!modalMode}
+        onClose={() => setModalMode(null)}
+        item={selectedItem}
+        mode={modalMode}
+        onSubmit={handleInspectionSubmit}
+      />
+
+      <AuditTrailDrawer
+        opened={drawerOpened}
+        onClose={() => setDrawerOpened(false)}
+        item={selectedItem}
+        logs={auditLogs}
+        loading={auditLoading}
+      />
+
+      <BulkUploadModal
+        opened={bulkModalOpened}
+        onClose={() => setBulkModalOpened(false)}
+        onUpload={handleBulkUpload}
+        loading={loading}
+      />
     </Container>
   );
 }
+
+// ... (existing code remains, adding PropTypes at the bottom or before usage)
+
+// Internal Helper for Request List
+function ResourceRequestList({ requests, userRole, onReview }) {
+  if (!requests || requests.length === 0)
+    return (
+      <Text c="dimmed" ta="center" py="xl">
+        No resource requests found.
+      </Text>
+    );
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "Approved":
+        return "green";
+      case "Rejected":
+        return "red";
+      default:
+        return "blue";
+    }
+  };
+
+  return (
+    <div style={{ overflowX: "auto" }}>
+      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <thead>
+          <tr style={{ textAlign: "left", borderBottom: "1px solid #eee" }}>
+            <th style={{ padding: "12px" }}>Date</th>
+            <th style={{ padding: "12px" }}>Item</th>
+            <th style={{ padding: "12px" }}>Qty</th>
+            <th style={{ padding: "12px" }}>Type</th>
+            <th style={{ padding: "12px" }}>Requested By</th>
+            <th style={{ padding: "12px" }}>Status</th>
+            {(userRole === "super_admin" || userRole === "warden") && (
+              <th style={{ padding: "12px" }}>Actions</th>
+            )}
+          </tr>
+        </thead>
+        <tbody>
+          {requests.map((req) => (
+            <tr key={req.id} style={{ borderBottom: "1px solid #f9f9f9" }}>
+              <td style={{ padding: "12px", fontSize: "12px" }}>
+                {new Date(req.created_at).toLocaleDateString()}
+              </td>
+              <td style={{ padding: "12px", fontWeight: 500 }}>
+                {req.item_name}
+              </td>
+              <td style={{ padding: "12px" }}>{req.quantity}</td>
+              <td style={{ padding: "12px" }}>{req.request_type}</td>
+              <td style={{ padding: "12px" }}>{req.requested_by_name}</td>
+              <td style={{ padding: "12px" }}>
+                <Badge color={getStatusColor(req.status)} variant="light">
+                  {req.status}
+                </Badge>
+              </td>
+              {(userRole === "super_admin" || userRole === "warden") &&
+                req.status === "Pending" && (
+                  <td style={{ padding: "12px" }}>
+                    <Group gap={4}>
+                      <Button
+                        size="compact-xs"
+                        color="green"
+                        onClick={() => onReview(req.id, { status: "Approved" })}
+                      >
+                        Approve
+                      </Button>
+                      <Button
+                        size="compact-xs"
+                        color="red"
+                        variant="outline"
+                        onClick={() => onReview(req.id, { status: "Rejected" })}
+                      >
+                        Reject
+                      </Button>
+                    </Group>
+                  </td>
+                )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+ResourceRequestList.propTypes = {
+  requests: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.number,
+      item_name: PropTypes.string,
+      quantity: PropTypes.number,
+      request_type: PropTypes.string,
+      status: PropTypes.string,
+      requested_by_name: PropTypes.string,
+      created_at: PropTypes.string,
+    }),
+  ).isRequired,
+  userRole: PropTypes.string.isRequired,
+  onReview: PropTypes.func.isRequired,
+};
