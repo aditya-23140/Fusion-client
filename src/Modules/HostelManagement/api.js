@@ -165,10 +165,11 @@ export const rejectLeave = async (leaveId, data) => {
 
 export const updateLeaveStatus = async (leaveId, status, data) => {
   // Route to update leave status (approve/reject based on status)
-  if (status === "approved") {
+  const normalizedStatus = (status || "").toLowerCase();
+  if (normalizedStatus === "approved") {
     return approveLeave(leaveId, data);
   }
-  if (status === "rejected") {
+  if (normalizedStatus === "rejected") {
     return rejectLeave(leaveId, data);
   }
   throw new Error("Invalid leave status");

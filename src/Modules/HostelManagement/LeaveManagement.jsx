@@ -118,10 +118,9 @@ export default function LeaveManagement() {
 
   const handleApproveLeave = async (leave) => {
     try {
-      await updateLeaveStatus({
-        leave_id: leave.id,
+      await updateLeaveStatus(leave.id, "approved", {
         status: "Approved",
-        remarks: "Approved by Caretaker",
+        decision_remarks: "Approved by Caretaker",
       });
       notifications.show({
         title: "Success",
@@ -151,10 +150,9 @@ export default function LeaveManagement() {
 
     try {
       setSubmitting(true);
-      await updateLeaveStatus({
-        leave_id: selectedLeave.id,
+      await updateLeaveStatus(selectedLeave.id, "rejected", {
         status: "Rejected",
-        remarks: rejectReason,
+        decision_remarks: rejectReason,
       });
       notifications.show({
         title: "Success",
