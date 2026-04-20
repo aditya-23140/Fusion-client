@@ -160,7 +160,9 @@ export default function FineManagement() {
                 <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
                   Total Fines
                 </Text>
-                <Title order={3}>{report.summary.total_fines}</Title>
+                <Text fw={700} size="xl">
+                  {report.summary.total_fines}
+                </Text>
               </Card>
             </Grid.Col>
             <Grid.Col span={{ base: 12, md: 4 }}>
@@ -168,7 +170,9 @@ export default function FineManagement() {
                 <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
                   Total Amount
                 </Text>
-                <Title order={3}>₹{report.summary.total_amount}</Title>
+                <Text fw={700} size="xl">
+                  ₹{report.summary.total_amount}
+                </Text>
               </Card>
             </Grid.Col>
             <Grid.Col span={{ base: 12, md: 4 }}>
@@ -176,9 +180,9 @@ export default function FineManagement() {
                 <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
                   Unpaid Count
                 </Text>
-                <Title order={3} c="red">
+                <Text fw={700} size="xl" c="red">
                   {report.summary.unpaid_fines}
-                </Title>
+                </Text>
               </Card>
             </Grid.Col>
           </Grid>
@@ -216,12 +220,7 @@ export default function FineManagement() {
                     {filteredFines.map((f) => (
                       <Table.Tr key={f.id}>
                         <Table.Td>
-                          <Text
-                            size="xs"
-                            fw={700}
-                            variant="gradient"
-                            gradient={{ from: "blue", to: "cyan" }}
-                          >
+                          <Text size="sm" fw={600}>
                             {f.fine_uid}
                           </Text>
                         </Table.Td>
@@ -246,7 +245,7 @@ export default function FineManagement() {
                           </Badge>
                         </Table.Td>
                         <Table.Td>
-                          <Text size="sm" fw={700} c="blue">
+                          <Text size="sm" fw={700}>
                             ₹{f.amount}
                           </Text>
                         </Table.Td>
@@ -267,7 +266,7 @@ export default function FineManagement() {
                                   ? "gray"
                                   : "red"
                             }
-                            variant="filled"
+                            variant="light"
                             size="sm"
                           >
                             {f.status}

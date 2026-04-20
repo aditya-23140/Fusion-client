@@ -54,9 +54,7 @@ function BoardEmptyState({ title, description, icon: Icon }) {
         <div
           style={{
             padding: "20px",
-            borderRadius: "50%",
-            backgroundColor: "var(--mantine-color-blue-0)",
-            color: "var(--mantine-color-blue-6)",
+            color: "var(--mantine-color-gray-5)",
           }}
         >
           <PlaceholderIcon size={48} stroke={1.5} />
@@ -247,8 +245,6 @@ export default function NoticeBoard() {
         <Tabs
           value={activeTab}
           onChange={setActiveTab}
-          variant="pills"
-          radius="md"
           style={{ minHeight: "600px" }}
         >
           <Tabs.List>

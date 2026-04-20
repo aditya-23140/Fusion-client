@@ -10,8 +10,6 @@ import {
   Button,
   Group,
   Alert,
-  Grid,
-  Paper,
   TextInput,
   Stack,
   Textarea,
@@ -21,6 +19,8 @@ import {
   Select,
   Modal,
   Container,
+  Card,
+  SimpleGrid,
 } from "@mantine/core";
 import {
   IconPlus,
@@ -28,8 +28,6 @@ import {
   IconUser,
   IconList,
   IconSearch,
-  IconFilter,
-  IconDashboard,
   IconChecklist,
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
@@ -219,332 +217,275 @@ export default function ComplaintManagement() {
   return (
     <Container size={1200} p={0}>
       <Stack gap="xl">
-        <Grid gutter="xl">
-          {/* Sidebar: Stats & Filters */}
-          <Grid.Col span={{ base: 12, md: 3 }}>
-            <Stack gap="lg">
-              <Paper withBorder p="md" radius="md" shadow="sm">
-                <Group mb="md">
-                  <IconDashboard
-                    size={20}
-                    color="var(--mantine-color-blue-filled)"
-                  />
-                  <Text fw={700}>Command Center</Text>
-                </Group>
-                <Stack gap="sm">
-                  <Paper withBorder p="sm" bg="gray.0" radius="sm">
-                    <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
-                      Active Issues
-                    </Text>
-                    <Text fw={700} size="xl" c="blue">
-                      {activeCount}
-                    </Text>
-                  </Paper>
-                  <Paper withBorder p="sm" bg="gray.0" radius="sm">
-                    <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
-                      Escalations
-                    </Text>
-                    <Text fw={700} size="xl" c="orange">
-                      {escalatedCount}
-                    </Text>
-                  </Paper>
-                  <Paper withBorder p="sm" bg="gray.0" radius="sm">
-                    <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
-                      Total Registry
-                    </Text>
-                    <Text fw={700} size="xl">
-                      {complaints.length}
-                    </Text>
-                  </Paper>
-                </Stack>
-              </Paper>
+        <Group justify="space-between" align="flex-end">
+          <Stack gap={0}>
+            <Title order={1} fw={800} style={{ letterSpacing: "-1px" }}>
+              Hostel Grievances
+            </Title>
+            <Text c="dimmed" size="sm">
+              Manage and resolve hostel complaints
+            </Text>
+          </Stack>
 
-              <Paper withBorder p="md" radius="md" shadow="sm">
-                <Group mb="md">
-                  <IconFilter
-                    size={20}
-                    color="var(--mantine-color-teal-filled)"
-                  />
-                  <Text fw={700}>Refine Search</Text>
-                </Group>
-                <Stack gap="sm">
-                  <Select
-                    label="Status"
-                    placeholder="Select Status"
-                    clearable
-                    data={[
-                      { value: "submitted", label: "Submitted" },
-                      { value: "inprogress", label: "In Progress" },
-                      { value: "escalated", label: "Escalated" },
-                      { value: "resolved", label: "Resolved" },
-                      { value: "closed", label: "Closed" },
-                    ]}
-                    value={statusFilter}
-                    onChange={setStatusFilter}
-                  />
-                  <Select
-                    label="Department"
-                    placeholder="Select Category"
-                    clearable
-                    data={["Maintenance", "Cleaning", "Security", "Other"]}
-                    value={categoryFilter}
-                    onChange={setCategoryFilter}
-                  />
-                </Stack>
-              </Paper>
+          {isStudent && (
+            <Button
+              leftSection={<IconPlus size={18} />}
+              onClick={() => setModalOpen(true)}
+              size="md"
+            >
+              New Complaint
+            </Button>
+          )}
+        </Group>
 
-              {isStudent && (
-                <Button
-                  fullWidth
-                  leftSection={<IconPlus size={18} />}
-                  onClick={() => setModalOpen(true)}
-                  variant="gradient"
-                  gradient={{ from: "blue", to: "cyan" }}
-                  size="md"
-                >
-                  New Complaint
-                </Button>
-              )}
-            </Stack>
-          </Grid.Col>
+        {error && (
+          <Alert
+            icon={<IconAlertCircle />}
+            color="red"
+            variant="light"
+            radius="md"
+          >
+            {error}
+          </Alert>
+        )}
 
-          {/* Main Content Area */}
-          <Grid.Col span={{ base: 12, md: 9 }}>
-            <Stack gap="lg">
-              <Group justify="space-between" align="center">
-                <Title order={2}>Hostel Grievances</Title>
-                <TextInput
-                  placeholder="Search by ID or description..."
-                  leftSection={<IconSearch size={16} />}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.currentTarget.value)}
-                  style={{ width: 350 }}
-                  radius="xl"
-                />
-              </Group>
+        {isStaff && (
+          <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="lg">
+            <Card withBorder radius="md" p="md">
+              <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
+                Active Issues
+              </Text>
+              <Title order={3}>{activeCount}</Title>
+            </Card>
+            <Card withBorder radius="md" p="md">
+              <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
+                Escalations
+              </Text>
+              <Title order={3}>{escalatedCount}</Title>
+            </Card>
+            <Card withBorder radius="md" p="md">
+              <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
+                Total Registry
+              </Text>
+              <Title order={3}>{complaints.length}</Title>
+            </Card>
+          </SimpleGrid>
+        )}
 
-              {error && (
-                <Alert
-                  icon={<IconAlertCircle />}
-                  color="red"
-                  title="System Error"
-                  variant="filled"
+        <Group justify="space-between" align="center">
+          <Group gap="sm">
+            <Select
+              placeholder="Status"
+              clearable
+              data={[
+                { value: "submitted", label: "Submitted" },
+                { value: "inprogress", label: "In Progress" },
+                { value: "escalated", label: "Escalated" },
+                { value: "resolved", label: "Resolved" },
+                { value: "closed", label: "Closed" },
+              ]}
+              value={statusFilter}
+              onChange={setStatusFilter}
+              style={{ width: 150 }}
+            />
+            <Select
+              placeholder="Department"
+              clearable
+              data={["Maintenance", "Cleaning", "Security", "Other"]}
+              value={categoryFilter}
+              onChange={setCategoryFilter}
+              style={{ width: 150 }}
+            />
+          </Group>
+          <TextInput
+            placeholder="Search by ID or description..."
+            leftSection={<IconSearch size={16} />}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.currentTarget.value)}
+            style={{ width: 300 }}
+          />
+        </Group>
+
+        <Tabs value={activeTab} onChange={setActiveTab}>
+          <Tabs.List mb="md">
+            {isStudent && (
+              <Tabs.Tab
+                value="my"
+                leftSection={<IconUser size={14} />}
+                rightSection={
+                  <Badge size="sm" variant="filled" circle>
+                    {myComplaints.length}
+                  </Badge>
+                }
+              >
+                My Requests
+              </Tabs.Tab>
+            )}
+            {isStaff && (
+              <Tabs.Tab
+                value="all"
+                leftSection={<IconList size={14} />}
+                rightSection={
+                  <Badge size="sm" variant="light" circle>
+                    {complaints.length}
+                  </Badge>
+                }
+              >
+                Registry
+              </Tabs.Tab>
+            )}
+            {userRole === "warden" && (
+              <Tabs.Tab
+                value="reports"
+                leftSection={<IconChecklist size={14} />}
+              >
+                Audit Report
+              </Tabs.Tab>
+            )}
+          </Tabs.List>
+
+          <Tabs.Panel value="my">
+            <Stack gap="md">
+              {getFilteredComplaints(myComplaints).length > 0 ? (
+                getFilteredComplaints(myComplaints).map((complaint) => (
+                  <ComplaintCard
+                    key={complaint.id}
+                    complaint={complaint}
+                    onView={(c) => {
+                      setSelectedComplaint(c);
+                      setDrawerOpen(true);
+                    }}
+                    showActions={false}
+                  />
+                ))
+              ) : (
+                <Card
+                  p="xl"
+                  withBorder
+                  style={{
+                    textAlign: "center",
+                    backgroundColor: "#f9f9f9",
+                  }}
                   radius="md"
                 >
-                  {error}
-                </Alert>
+                  <Text c="dimmed">No personal grievances found.</Text>
+                </Card>
               )}
-
-              <Tabs
-                value={activeTab}
-                onChange={setActiveTab}
-                variant="pills"
-                radius="xl"
-              >
-                <Tabs.List mb="md">
-                  {isStudent && (
-                    <Tabs.Tab
-                      value="my"
-                      leftSection={<IconUser size={14} />}
-                      rightSection={
-                        <Badge size="sm" variant="filled" circle>
-                          {myComplaints.length}
-                        </Badge>
-                      }
-                    >
-                      My Requests
-                    </Tabs.Tab>
-                  )}
-                  {isStaff && (
-                    <Tabs.Tab
-                      value="all"
-                      leftSection={<IconList size={14} />}
-                      rightSection={
-                        <Badge size="sm" variant="filled" circle>
-                          {complaints.length}
-                        </Badge>
-                      }
-                    >
-                      Registry
-                    </Tabs.Tab>
-                  )}
-                  {userRole === "warden" && (
-                    <Tabs.Tab
-                      value="reports"
-                      leftSection={<IconChecklist size={14} />}
-                    >
-                      Audit Report
-                    </Tabs.Tab>
-                  )}
-                </Tabs.List>
-
-                <Tabs.Panel value="my">
-                  <Stack gap="md">
-                    {getFilteredComplaints(myComplaints).length > 0 ? (
-                      getFilteredComplaints(myComplaints).map((complaint) => (
-                        <ComplaintCard
-                          key={complaint.id}
-                          complaint={complaint}
-                          onView={(c) => {
-                            setSelectedComplaint(c);
-                            setDrawerOpen(true);
-                          }}
-                          showActions={false}
-                        />
-                      ))
-                    ) : (
-                      <Paper
-                        p="xl"
-                        withBorder
-                        style={{
-                          textAlign: "center",
-                          backgroundColor: "#fdfdfd",
-                          borderStyle: "dashed",
-                        }}
-                        radius="md"
-                      >
-                        <Text c="dimmed">No personal grievances found.</Text>
-                      </Paper>
-                    )}
-                  </Stack>
-                </Tabs.Panel>
-
-                <Tabs.Panel value="all">
-                  <Stack gap="md">
-                    {getFilteredComplaints(complaints).length > 0 ? (
-                      getFilteredComplaints(complaints).map((complaint) => (
-                        <ComplaintCard
-                          key={complaint.id}
-                          complaint={complaint}
-                          onView={(c) => {
-                            setSelectedComplaint(c);
-                            setDrawerOpen(true);
-                          }}
-                          onStart={(c) => handleStartWork(c.id)}
-                          onEscalate={(c) => {
-                            setSelectedComplaint(c);
-                            setEscalateModalOpen(true);
-                          }}
-                          onResolve={(c) => {
-                            setSelectedComplaint(c);
-                            setResolveModalOpen(true);
-                          }}
-                          canStart={complaint.status === "Submitted"}
-                          canEscalate={complaint.status === "InProgress"}
-                          canResolve={["InProgress", "Escalated"].includes(
-                            complaint.status,
-                          )}
-                        />
-                      ))
-                    ) : (
-                      <Paper
-                        p="xl"
-                        withBorder
-                        style={{
-                          textAlign: "center",
-                          backgroundColor: "#fdfdfd",
-                          borderStyle: "dashed",
-                        }}
-                        radius="md"
-                      >
-                        <Text c="dimmed">
-                          No assigned registry items found.
-                        </Text>
-                      </Paper>
-                    )}
-                  </Stack>
-                </Tabs.Panel>
-
-                <Tabs.Panel value="reports">
-                  {loadingReport ? (
-                    <Paper
-                      p="xl"
-                      withBorder
-                      style={{ textAlign: "center" }}
-                      radius="md"
-                    >
-                      <Text c="dimmed">
-                        Scanning registry for audit metrics...
-                      </Text>
-                    </Paper>
-                  ) : userRole === "warden" && reportData ? (
-                    <Stack gap="xl" mt="md">
-                      <Grid>
-                        <Grid.Col span={6}>
-                          <Paper
-                            withBorder
-                            p="xl"
-                            radius="md"
-                            bg="blue.0"
-                            shadow="xs"
-                          >
-                            <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
-                              Resolved Today
-                            </Text>
-                            <Text fw={800} size="36px" c="blue.8">
-                              {reportData.summary.resolved_today}
-                            </Text>
-                          </Paper>
-                        </Grid.Col>
-                        <Grid.Col span={6}>
-                          <Paper
-                            withBorder
-                            p="xl"
-                            radius="md"
-                            bg="teal.0"
-                            shadow="xs"
-                          >
-                            <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
-                              System Total
-                            </Text>
-                            <Text fw={800} size="36px" c="teal.8">
-                              {reportData.summary.total_complaints}
-                            </Text>
-                          </Paper>
-                        </Grid.Col>
-                      </Grid>
-
-                      <Paper withBorder p="lg" radius="md" shadow="sm">
-                        <Title order={4} mb="lg">
-                          Operational Statistics
-                        </Title>
-                        <Stack gap="xs">
-                          {reportData.metrics.map((m, i) => (
-                            <Group
-                              key={i}
-                              justify="space-between"
-                              p="md"
-                              style={{
-                                borderRadius: "12px",
-                                background: "#f8f9fa",
-                              }}
-                            >
-                              <Stack gap={0}>
-                                <Text size="sm" fw={700}>
-                                  {m.category}
-                                </Text>
-                                <Text size="xs" c="dimmed">
-                                  {m.status}
-                                </Text>
-                              </Stack>
-                              <Badge size="lg" variant="light">
-                                {m.total}
-                              </Badge>
-                            </Group>
-                          ))}
-                        </Stack>
-                      </Paper>
-                    </Stack>
-                  ) : (
-                    <Paper p="xl" withBorder style={{ textAlign: "center" }}>
-                      <Text c="dimmed">Report parameters not initialized.</Text>
-                    </Paper>
-                  )}
-                </Tabs.Panel>
-              </Tabs>
             </Stack>
-          </Grid.Col>
-        </Grid>
+          </Tabs.Panel>
+
+          <Tabs.Panel value="all">
+            <Stack gap="md">
+              {getFilteredComplaints(complaints).length > 0 ? (
+                getFilteredComplaints(complaints).map((complaint) => (
+                  <ComplaintCard
+                    key={complaint.id}
+                    complaint={complaint}
+                    onView={(c) => {
+                      setSelectedComplaint(c);
+                      setDrawerOpen(true);
+                    }}
+                    onStart={(c) => handleStartWork(c.id)}
+                    onEscalate={(c) => {
+                      setSelectedComplaint(c);
+                      setEscalateModalOpen(true);
+                    }}
+                    onResolve={(c) => {
+                      setSelectedComplaint(c);
+                      setResolveModalOpen(true);
+                    }}
+                    canStart={complaint.status === "Submitted"}
+                    canEscalate={complaint.status === "InProgress"}
+                    canResolve={["InProgress", "Escalated"].includes(
+                      complaint.status,
+                    )}
+                  />
+                ))
+              ) : (
+                <Card
+                  p="xl"
+                  withBorder
+                  style={{
+                    textAlign: "center",
+                    backgroundColor: "#f9f9f9",
+                  }}
+                  radius="md"
+                >
+                  <Text c="dimmed">No assigned registry items found.</Text>
+                </Card>
+              )}
+            </Stack>
+          </Tabs.Panel>
+
+          <Tabs.Panel value="reports">
+            {loadingReport ? (
+              <Card
+                p="xl"
+                withBorder
+                style={{ textAlign: "center" }}
+                radius="md"
+              >
+                <Text c="dimmed">Scanning registry for audit metrics...</Text>
+              </Card>
+            ) : userRole === "warden" && reportData ? (
+              <Stack gap="xl" mt="md">
+                <SimpleGrid cols={2}>
+                  <Card withBorder p="xl" radius="md">
+                    <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
+                      Resolved Today
+                    </Text>
+                    <Text fw={800} size="36px">
+                      {reportData.summary.resolved_today}
+                    </Text>
+                  </Card>
+                  <Card withBorder p="xl" radius="md">
+                    <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
+                      System Total
+                    </Text>
+                    <Text fw={800} size="36px">
+                      {reportData.summary.total_complaints}
+                    </Text>
+                  </Card>
+                </SimpleGrid>
+
+                <Card withBorder p="lg" radius="md">
+                  <Title order={4} mb="lg">
+                    Operational Statistics
+                  </Title>
+                  <Stack gap="xs">
+                    {reportData.metrics.map((m, i) => (
+                      <Group
+                        key={i}
+                        justify="space-between"
+                        p="md"
+                        style={{
+                          borderRadius: "4px",
+                          background: "#f8f9fa",
+                        }}
+                      >
+                        <Stack gap={0}>
+                          <Text size="sm" fw={700}>
+                            {m.category}
+                          </Text>
+                          <Text size="xs" c="dimmed">
+                            {m.status}
+                          </Text>
+                        </Stack>
+                        <Badge size="lg" variant="light">
+                          {m.total}
+                        </Badge>
+                      </Group>
+                    ))}
+                  </Stack>
+                </Card>
+              </Stack>
+            ) : (
+              <Card p="xl" withBorder style={{ textAlign: "center" }}>
+                <Text c="dimmed">Report parameters not initialized.</Text>
+              </Card>
+            )}
+          </Tabs.Panel>
+        </Tabs>
 
         <ComplaintDetailDrawer
           opened={drawerOpen}

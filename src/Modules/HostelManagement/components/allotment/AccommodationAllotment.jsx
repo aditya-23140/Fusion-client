@@ -7,7 +7,6 @@ import {
   Tabs,
   Alert,
   Loader,
-  Transition,
   Divider,
   Grid,
   Group,
@@ -16,6 +15,8 @@ import {
   Card,
   Badge,
   ThemeIcon,
+  Table,
+  ActionIcon,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
@@ -23,7 +24,6 @@ import {
   IconUserCog,
   IconBuilding,
   IconKey,
-  IconCircleCheck,
   IconHistory,
   IconLayoutDashboard,
   IconListCheck,
@@ -278,527 +278,427 @@ function AccommodationAllotment({ userRole }) {
   }
 
   return (
-    <Transition mounted transition="fade" duration={800}>
-      {(styles) => (
-        <Box style={styles}>
-          <Box mb="xl">
-            <Group justify="space-between" align="flex-end">
-              <Stack gap={4}>
-                <Title order={1} fw={900} style={{ letterSpacing: "-1px" }}>
-                  Hall Accommodation
-                </Title>
-                <Text c="dimmed" size="sm">
-                  {isStudent
-                    ? "Request and manage your hostel allotment"
-                    : "Multi-hostel capacity & student assignment management"}
-                </Text>
-              </Stack>
-            </Group>
+    <Box>
+      <Box mb="xl">
+        <Group justify="space-between" align="flex-end">
+          <Stack gap={4}>
+            <Title order={1} fw={800} style={{ letterSpacing: "-1px" }}>
+              Hall Accommodation
+            </Title>
+            <Text c="dimmed" size="sm">
+              {isStudent
+                ? "Request and manage your hostel allotment"
+                : "Multi-hostel capacity & student assignment management"}
+            </Text>
+          </Stack>
+        </Group>
+      </Box>
+
+      <Divider mb="xl" />
+
+      {isSuperAdmin && (
+        <Tabs value={activeTab} onChange={setActiveTab} variant="pills" mb="xl">
+          <Tabs.List>
+            <Tabs.Tab
+              value="dashboard"
+              leftSection={<IconLayoutDashboard size={16} />}
+            >
+              Capacity Dashboard
+            </Tabs.Tab>
+            <Tabs.Tab
+              value="allotments"
+              leftSection={<IconUserCog size={16} />}
+            >
+              Allotment List
+            </Tabs.Tab>
+          </Tabs.List>
+
+          <Box mt="xl">
+            <Tabs.Panel value="dashboard">
+              <CapacityHeatmap capacityData={capacityData} />
+            </Tabs.Panel>
+
+            <Tabs.Panel value="allotments">
+              <AllotmentListView isSuperAdmin={isSuperAdmin} />
+            </Tabs.Panel>
           </Box>
+        </Tabs>
+      )}
 
-          <Divider mb="xl" />
-
-          {isSuperAdmin && (
-            <Tabs
-              value={activeTab}
-              onChange={setActiveTab}
-              variant="pills"
-              mb="xl"
+      {isStaff && (
+        <Tabs value={activeTab} onChange={setActiveTab} variant="pills" mb="xl">
+          <Tabs.List>
+            <Tabs.Tab
+              value="dashboard"
+              leftSection={<IconLayoutDashboard size={16} />}
             >
-              <Tabs.List>
-                <Tabs.Tab
-                  value="dashboard"
-                  leftSection={<IconLayoutDashboard size={16} />}
-                >
-                  Capacity Dashboard
-                </Tabs.Tab>
-                <Tabs.Tab
-                  value="allotments"
-                  leftSection={<IconUserCog size={16} />}
-                >
-                  Allotment List
-                </Tabs.Tab>
-              </Tabs.List>
+              Capacity Dashboard
+            </Tabs.Tab>
 
-              <Box mt="xl">
-                <Tabs.Panel value="dashboard">
-                  <CapacityHeatmap capacityData={capacityData} />
-                </Tabs.Panel>
-
-                <Tabs.Panel value="allotments">
-                  <AllotmentListView isSuperAdmin={isSuperAdmin} />
-                </Tabs.Panel>
-              </Box>
-            </Tabs>
-          )}
-
-          {isStaff && (
-            <Tabs
-              value={activeTab}
-              onChange={setActiveTab}
-              variant="pills"
-              mb="xl"
+            <Tabs.Tab
+              value="allotments"
+              leftSection={<IconUserCog size={16} />}
             >
-              <Tabs.List>
-                <Tabs.Tab
-                  value="dashboard"
-                  leftSection={<IconLayoutDashboard size={16} />}
+              Allotment List
+            </Tabs.Tab>
+            <Tabs.Tab
+              value="room_changes"
+              leftSection={<IconBuildingCommunity size={16} />}
+            >
+              Room Changes
+            </Tabs.Tab>
+          </Tabs.List>
+
+          <Box mt="xl">
+            <Tabs.Panel value="dashboard">
+              <CapacityHeatmap capacityData={capacityData} />
+            </Tabs.Panel>
+
+            <Tabs.Panel value="allotments">
+              <AllotmentListView isSuperAdmin={false} />
+            </Tabs.Panel>
+
+            <Tabs.Panel value="room_changes">
+              <Stack>
+                <Title order={3}>Room Change Requests</Title>
+                <Alert
+                  icon={<IconListCheck />}
+                  color="blue"
+                  title="Manage Room Changes"
                 >
-                  Capacity Dashboard
-                </Tabs.Tab>
+                  Review and approve/reject student room change requests. Each
+                  change must be reviewed and approved before updating
+                  allocations.
+                </Alert>
 
-                <Tabs.Tab
-                  value="allotments"
-                  leftSection={<IconUserCog size={16} />}
-                >
-                  Allotment List
-                </Tabs.Tab>
-                <Tabs.Tab
-                  value="room_changes"
-                  leftSection={<IconBuildingCommunity size={16} />}
-                >
-                  Room Changes
-                </Tabs.Tab>
-              </Tabs.List>
-
-              <Box mt="xl">
-                <Tabs.Panel value="dashboard">
-                  <CapacityHeatmap capacityData={capacityData} />
-                </Tabs.Panel>
-
-                <Tabs.Panel value="allotments">
-                  <AllotmentListView isSuperAdmin={false} />
-                </Tabs.Panel>
-
-                <Tabs.Panel value="room_changes">
-                  <Stack>
-                    <Title order={3}>Room Change Requests</Title>
-                    <Alert
-                      icon={<IconListCheck />}
-                      color="blue"
-                      title="Manage Room Changes"
-                    >
-                      Review and approve/reject student room change requests.
-                      Each change must be reviewed and approved before updating
-                      allocations.
-                    </Alert>
-
-                    {roomChanges.length > 0 ? (
-                      <Card withBorder>
-                        <table
-                          style={{ width: "100%", borderCollapse: "collapse" }}
-                        >
-                          <thead>
-                            <tr
-                              style={{
-                                borderBottom: "1px solid #eee",
-                                textAlign: "left",
-                              }}
-                            >
-                              <th style={{ padding: "10px" }}>Student</th>
-                              <th style={{ padding: "10px" }}>From Room</th>
-                              <th style={{ padding: "10px" }}>To Room</th>
-                              <th style={{ padding: "10px" }}>Reason</th>
-                              <th style={{ padding: "10px" }}>Status</th>
-                              <th style={{ padding: "10px" }}>Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {roomChanges.map((change) => (
-                              <tr
-                                key={change.id}
-                                style={{ borderBottom: "1px solid #f9f9f9" }}
-                              >
-                                <td style={{ padding: "10px" }}>
-                                  {change.student_name}
-                                </td>
-                                <td style={{ padding: "10px" }}>
-                                  {change.current_room_number}
-                                </td>
-                                <td style={{ padding: "10px" }}>
-                                  {change.requested_room_number}
-                                </td>
-                                <td style={{ padding: "10px" }}>
-                                  <Text size="sm" c="dimmed">
-                                    {change.reason?.length > 30
-                                      ? `${change.reason.substring(0, 30)}...`
-                                      : change.reason}
-                                  </Text>
-                                </td>
-                                <td style={{ padding: "10px" }}>
-                                  <Badge
-                                    color={
-                                      change.status === "requested"
-                                        ? "yellow"
-                                        : change.status === "approved_warden"
-                                          ? "blue"
-                                          : change.status === "completed"
-                                            ? "green"
-                                            : change.status === "rejected"
-                                              ? "red"
-                                              : "gray"
-                                    }
-                                  >
-                                    {change.status}
-                                  </Badge>
-                                </td>
-                                <td style={{ padding: "10px" }}>
-                                  {(change.status === "requested" ||
-                                    change.status === "approved_warden") && (
-                                    <Group gap="xs">
-                                      <button
-                                        style={{
-                                          background: "none",
-                                          border: "none",
-                                          cursor: "pointer",
-                                          color: "green",
-                                        }}
-                                        title={
-                                          change.status === "requested"
-                                            ? "Approve (Warden Step)"
-                                            : "Approve (Caretaker Step)"
-                                        }
-                                        onClick={() =>
-                                          handleApproveChange(change.id)
-                                        }
-                                        disabled={actionLoading}
-                                      >
-                                        <IconCheck size={18} />
-                                      </button>
-                                      <button
-                                        style={{
-                                          background: "none",
-                                          border: "none",
-                                          cursor: "pointer",
-                                          color: "red",
-                                        }}
-                                        title="Reject"
-                                        onClick={() =>
-                                          handleRejectChange(change.id)
-                                        }
-                                        disabled={actionLoading}
-                                      >
-                                        <IconX size={18} />
-                                      </button>
-                                    </Group>
-                                  )}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </Card>
-                    ) : (
-                      <Text c="dimmed">No room changes found.</Text>
-                    )}
-                  </Stack>
-                </Tabs.Panel>
-              </Box>
-            </Tabs>
-          )}
-
-          {isStudent && (
-            <Box>
-              {myAllotment ? (
-                <Card
-                  withBorder
-                  shadow="sm"
-                  radius="md"
-                  p={0}
-                  style={{
-                    overflow: "hidden",
-                    border: "1px solid var(--mantine-color-green-light-hover)",
-                  }}
-                >
-                  <Box
-                    p="md"
-                    bg="var(--mantine-color-green-light)"
-                    style={{
-                      borderBottom:
-                        "1px solid var(--mantine-color-green-light-hover)",
-                      background:
-                        "linear-gradient(45deg, var(--mantine-color-green-light) 0%, #f6ffed 100%)",
-                    }}
-                  >
-                    <Group justify="space-between">
-                      <Group gap="sm">
-                        <ThemeIcon
-                          color="green"
-                          variant="light"
-                          size="lg"
-                          radius="md"
-                        >
-                          <IconBuilding size={20} />
-                        </ThemeIcon>
-                        <Stack gap={0}>
-                          <Title order={3} fw={800} c="green.9">
-                            Your Hostel Allotment
-                          </Title>
-                          <Text size="xs" c="green.7" fw={500}>
-                            Active Residence Assignment
-                          </Text>
-                        </Stack>
-                      </Group>
-                      <Group gap="xs">
-                        {myAllotment.is_legacy && (
-                          <Badge
-                            variant="dot"
-                            color="orange"
-                            size="md"
-                            leftSection={<IconHistory size={12} />}
-                          >
-                            Legacy Record
-                          </Badge>
-                        )}
-                        <Badge
-                          variant="filled"
-                          color="green"
-                          size="lg"
-                          radius="sm"
-                          leftSection={<IconCircleCheck size={14} />}
-                        >
-                          ACTIVE
-                        </Badge>
-                      </Group>
-                    </Group>
-                  </Box>
-
-                  <Box p="xl">
-                    <Grid gutter={40}>
-                      <Grid.Col span={{ base: 12, sm: 6 }}>
-                        <Group align="flex-start" wrap="nowrap">
-                          <ThemeIcon
-                            variant="transparent"
-                            color="dimmed"
-                            size="sm"
-                          >
-                            <IconBuildingSkyscraper size={18} />
-                          </ThemeIcon>
-                          <Stack gap={0}>
-                            <Text
-                              size="xs"
-                              c="dimmed"
-                              fw={700}
-                              tt="uppercase"
-                              style={{ letterSpacing: "1px" }}
-                            >
-                              Assigned Hostel
+                {roomChanges.length > 0 ? (
+                  <Table striped highlightOnHover>
+                    <Table.Thead>
+                      <Table.Tr>
+                        <Table.Th>Student</Table.Th>
+                        <Table.Th>From Room</Table.Th>
+                        <Table.Th>To Room</Table.Th>
+                        <Table.Th>Reason</Table.Th>
+                        <Table.Th>Status</Table.Th>
+                        <Table.Th>Actions</Table.Th>
+                      </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>
+                      {roomChanges.map((change) => (
+                        <Table.Tr key={change.id}>
+                          <Table.Td>{change.student_name}</Table.Td>
+                          <Table.Td>{change.current_room_number}</Table.Td>
+                          <Table.Td>{change.requested_room_number}</Table.Td>
+                          <Table.Td>
+                            <Text size="sm" c="dimmed">
+                              {change.reason?.length > 30
+                                ? `${change.reason.substring(0, 30)}...`
+                                : change.reason}
                             </Text>
-                            <Text
-                              size="xl"
-                              fw={900}
-                              variant="gradient"
-                              gradient={{ from: "green.9", to: "green.7" }}
+                          </Table.Td>
+                          <Table.Td>
+                            <Badge
+                              variant="light"
+                              color={
+                                change.status === "requested"
+                                  ? "yellow"
+                                  : change.status === "approved_warden"
+                                    ? "blue"
+                                    : change.status === "completed"
+                                      ? "green"
+                                      : change.status === "rejected"
+                                        ? "red"
+                                        : "gray"
+                              }
                             >
-                              {myAllotment.hostel_name}
-                            </Text>
-                          </Stack>
-                        </Group>
-                      </Grid.Col>
+                              {change.status}
+                            </Badge>
+                          </Table.Td>
+                          <Table.Td>
+                            {(change.status === "requested" ||
+                              change.status === "approved_warden") && (
+                              <Group gap="xs">
+                                <ActionIcon
+                                  variant="subtle"
+                                  color="green"
+                                  onClick={() => handleApproveChange(change.id)}
+                                  loading={actionLoading}
+                                >
+                                  <IconCheck size={18} />
+                                </ActionIcon>
+                                <ActionIcon
+                                  variant="subtle"
+                                  color="red"
+                                  onClick={() => handleRejectChange(change.id)}
+                                  loading={actionLoading}
+                                >
+                                  <IconX size={18} />
+                                </ActionIcon>
+                              </Group>
+                            )}
+                          </Table.Td>
+                        </Table.Tr>
+                      ))}
+                    </Table.Tbody>
+                  </Table>
+                ) : (
+                  <Text c="dimmed">No room changes found.</Text>
+                )}
+              </Stack>
+            </Tabs.Panel>
+          </Box>
+        </Tabs>
+      )}
 
-                      <Grid.Col span={{ base: 12, sm: 6 }}>
-                        <Group align="flex-start" wrap="nowrap">
-                          <ThemeIcon
-                            variant="transparent"
-                            color="dimmed"
-                            size="sm"
-                          >
-                            <IconKey size={18} />
-                          </ThemeIcon>
-                          <Stack gap={0}>
-                            <Text
-                              size="xs"
-                              c="dimmed"
-                              fw={700}
-                              tt="uppercase"
-                              style={{ letterSpacing: "1px" }}
-                            >
-                              Room Selection
-                            </Text>
-                            <Text size="xl" fw={900} c="dark.4">
-                              {myAllotment.room_number}
-                            </Text>
-                          </Stack>
-                        </Group>
-                      </Grid.Col>
-                    </Grid>
-
-                    {myAllotment.allotted_at && (
-                      <Box
-                        mt="xl"
-                        pt="md"
-                        style={{
-                          borderTop: "1px dashed var(--mantine-color-gray-3)",
-                        }}
-                      >
-                        <Text size="xs" c="dimmed">
-                          Occupied since{" "}
-                          {new Date(myAllotment.allotted_at).toLocaleDateString(
-                            undefined,
-                            {
-                              year: "numeric",
-                              month: "long",
-                              day: "numeric",
-                            },
-                          )}
-                        </Text>
-                      </Box>
-                    )}
-                  </Box>
-                </Card>
-              ) : (
-                <>
-                  <ApplicationWindowBanner
-                    window={activeWindow}
-                    isStudent
-                    onApply={() =>
-                      notifications.show({
-                        message: "Scroll down to submit preferences",
-                        color: "blue",
-                      })
-                    }
-                  />
-                  {!activeWindow && (
-                    <Alert
-                      icon={<IconHome size={16} />}
-                      title="Notice"
-                      color="blue"
+      {isStudent && (
+        <Box>
+          {myAllotment ? (
+            <Card withBorder radius="md" p={0}>
+              <Box
+                p="md"
+                style={{
+                  borderBottom: "1px solid #eee",
+                }}
+              >
+                <Group justify="space-between">
+                  <Group gap="sm">
+                    <ThemeIcon
+                      color="green"
+                      variant="light"
+                      size="lg"
                       radius="md"
                     >
-                      There are no active application windows at this time.
-                    </Alert>
-                  )}
-                  {activeWindow && (
-                    <AccommodationRequestForm
-                      window={activeWindow}
-                      onSubmit={handleRequestSubmit}
-                      loading={actionLoading}
-                    />
-                  )}
-                </>
-              )}
-
-              {/* STUDENT ROOM CHANGE HISTORY (Only visible if they have an active allotment) */}
-              {myAllotment && (
-                <Box mt="xl">
-                  <Group justify="space-between" mb="md">
-                    <Title order={3}>Room Change Requests</Title>
-                    <button
-                      onClick={() => setChangeModalOpen(true)}
-                      style={{
-                        padding: "8px 16px",
-                        backgroundColor: "var(--mantine-color-blue-filled)",
-                        color: "white",
-                        border: "none",
-                        borderRadius: "4px",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                      }}
-                    >
-                      <IconPlus size={16} /> Request Room Change
-                    </button>
+                      <IconBuilding size={20} />
+                    </ThemeIcon>
+                    <Stack gap={0}>
+                      <Title order={3} fw={800}>
+                        Your Hostel Allotment
+                      </Title>
+                      <Text size="xs" c="dimmed" fw={500}>
+                        Active Residence Assignment
+                      </Text>
+                    </Stack>
                   </Group>
-                  <Alert
-                    icon={<IconAlertCircle size={16} />}
-                    color="blue"
-                    title="Room Change Process"
-                    mb="md"
-                  >
-                    Submit a request to move to a different room. Your request
-                    must be approved by both the Warden and Caretaker before
-                    taking effect.
-                  </Alert>
-
-                  {roomChanges.length > 0 ? (
-                    <Card withBorder>
-                      <table
-                        style={{ width: "100%", borderCollapse: "collapse" }}
+                  <Group gap="xs">
+                    {myAllotment.is_legacy && (
+                      <Badge
+                        variant="dot"
+                        color="orange"
+                        size="md"
+                        leftSection={<IconHistory size={12} />}
                       >
-                        <thead>
-                          <tr
-                            style={{
-                              borderBottom: "1px solid #eee",
-                              textAlign: "left",
-                            }}
-                          >
-                            <th style={{ padding: "10px" }}>From Room</th>
-                            <th style={{ padding: "10px" }}>To Room</th>
-                            <th style={{ padding: "10px" }}>Reason</th>
-                            <th style={{ padding: "10px" }}>Status</th>
-                            <th style={{ padding: "10px" }}>Date Requested</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {roomChanges.map((change) => (
-                            <tr
-                              key={change.id}
-                              style={{ borderBottom: "1px solid #f9f9f9" }}
-                            >
-                              <td style={{ padding: "10px" }}>
-                                {change.current_room_number}
-                              </td>
-                              <td style={{ padding: "10px" }}>
-                                {change.requested_room_number}
-                              </td>
-                              <td style={{ padding: "10px" }}>
-                                {change.reason}
-                              </td>
-                              <td style={{ padding: "10px" }}>
-                                <Badge
-                                  color={
-                                    change.status === "requested"
-                                      ? "yellow"
-                                      : change.status === "approved_warden"
-                                        ? "blue"
-                                        : change.status === "completed"
-                                          ? "green"
-                                          : change.status === "rejected"
-                                            ? "red"
-                                            : "gray"
-                                  }
-                                >
-                                  {change.status === "requested"
-                                    ? "Pending"
-                                    : change.status === "approved_warden"
-                                      ? "Warden Approved"
-                                      : change.status === "completed"
-                                        ? "Completed"
-                                        : change.status === "rejected"
-                                          ? "Rejected"
-                                          : change.status}
-                                </Badge>
-                              </td>
-                              <td style={{ padding: "10px" }}>
-                                {change.requested_date}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </Card>
-                  ) : (
-                    <Text c="dimmed">No room change requests found.</Text>
-                  )}
-                </Box>
-              )}
+                        Legacy Record
+                      </Badge>
+                    )}
+                    <Badge variant="light" color="blue" size="lg" radius="sm">
+                      ACTIVE
+                    </Badge>
+                  </Group>
+                </Group>
+              </Box>
 
-              {/* STUDENT ROOM CHANGE MODAL (Only rendered if they have an active allotment) */}
-              {isStudent && myAllotment && (
-                <RoomChangeRequestForm
-                  opened={changeModalOpen}
-                  onClose={() => setChangeModalOpen(false)}
-                  onSubmit={handleRequestRoomChange}
+              <Box p="xl">
+                <Grid gutter={40}>
+                  <Grid.Col span={{ base: 12, sm: 6 }}>
+                    <Group align="flex-start" wrap="nowrap">
+                      <ThemeIcon variant="transparent" color="dimmed" size="sm">
+                        <IconBuildingSkyscraper size={18} />
+                      </ThemeIcon>
+                      <Stack gap={0}>
+                        <Text
+                          size="xs"
+                          c="dimmed"
+                          fw={700}
+                          tt="uppercase"
+                          style={{ letterSpacing: "1px" }}
+                        >
+                          Assigned Hostel
+                        </Text>
+                        <Text size="xl" fw={800}>
+                          {myAllotment.hostel_name}
+                        </Text>
+                      </Stack>
+                    </Group>
+                  </Grid.Col>
+
+                  <Grid.Col span={{ base: 12, sm: 6 }}>
+                    <Group align="flex-start" wrap="nowrap">
+                      <ThemeIcon variant="transparent" color="dimmed" size="sm">
+                        <IconKey size={18} />
+                      </ThemeIcon>
+                      <Stack gap={0}>
+                        <Text
+                          size="xs"
+                          c="dimmed"
+                          fw={700}
+                          tt="uppercase"
+                          style={{ letterSpacing: "1px" }}
+                        >
+                          Room Selection
+                        </Text>
+                        <Text size="xl" fw={800}>
+                          {myAllotment.room_number || "N/A"}
+                        </Text>
+                      </Stack>
+                    </Group>
+                  </Grid.Col>
+                </Grid>
+
+                {myAllotment.allotted_at && (
+                  <Box
+                    mt="xl"
+                    pt="md"
+                    style={{
+                      borderTop: "1px dashed var(--mantine-color-gray-3)",
+                    }}
+                  >
+                    <Text size="xs" c="dimmed">
+                      Occupied since{" "}
+                      {new Date(myAllotment.allotted_at).toLocaleDateString(
+                        undefined,
+                        {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        },
+                      )}
+                    </Text>
+                  </Box>
+                )}
+              </Box>
+            </Card>
+          ) : (
+            <>
+              <ApplicationWindowBanner
+                window={activeWindow}
+                isStudent
+                onApply={() =>
+                  notifications.show({
+                    message: "Scroll down to submit preferences",
+                    color: "blue",
+                  })
+                }
+              />
+              {!activeWindow && (
+                <Alert
+                  icon={<IconHome size={16} />}
+                  title="Notice"
+                  color="blue"
+                  radius="md"
+                >
+                  There are no active application windows at this time.
+                </Alert>
+              )}
+              {activeWindow && (
+                <AccommodationRequestForm
+                  window={activeWindow}
+                  onSubmit={handleRequestSubmit}
                   loading={actionLoading}
-                  availableRooms={availableRooms}
                 />
+              )}
+            </>
+          )}
+
+          {/* STUDENT ROOM CHANGE HISTORY (Only visible if they have an active allotment) */}
+          {myAllotment && (
+            <Box mt="xl">
+              <Group justify="space-between" mb="md">
+                <Title order={3}>Room Change Requests</Title>
+                <button
+                  onClick={() => setChangeModalOpen(true)}
+                  style={{
+                    padding: "8px 16px",
+                    backgroundColor: "var(--mantine-color-blue-filled)",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                >
+                  <IconPlus size={16} /> Request Room Change
+                </button>
+              </Group>
+              <Alert
+                icon={<IconAlertCircle size={16} />}
+                color="blue"
+                title="Room Change Process"
+                mb="md"
+              >
+                Submit a request to move to a different room. Your request must
+                be approved by both the Warden and Caretaker before taking
+                effect.
+              </Alert>
+
+              {roomChanges.length > 0 ? (
+                <Table striped highlightOnHover>
+                  <Table.Thead>
+                    <Table.Tr>
+                      <Table.Th>From Room</Table.Th>
+                      <Table.Th>To Room</Table.Th>
+                      <Table.Th>Reason</Table.Th>
+                      <Table.Th>Status</Table.Th>
+                      <Table.Th>Date Requested</Table.Th>
+                    </Table.Tr>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {roomChanges.map((change) => (
+                      <Table.Tr key={change.id}>
+                        <Table.Td>{change.current_room_number}</Table.Td>
+                        <Table.Td>{change.requested_room_number}</Table.Td>
+                        <Table.Td>{change.reason}</Table.Td>
+                        <Table.Td>
+                          <Badge
+                            variant="light"
+                            color={
+                              change.status === "requested"
+                                ? "yellow"
+                                : change.status === "approved_warden"
+                                  ? "blue"
+                                  : change.status === "completed"
+                                    ? "green"
+                                    : change.status === "rejected"
+                                      ? "red"
+                                      : "gray"
+                            }
+                          >
+                            {change.status === "requested"
+                              ? "Pending"
+                              : change.status === "approved_warden"
+                                ? "Warden Approved"
+                                : change.status === "completed"
+                                  ? "Completed"
+                                  : change.status === "rejected"
+                                    ? "Rejected"
+                                    : change.status}
+                          </Badge>
+                        </Table.Td>
+                        <Table.Td>{change.requested_date}</Table.Td>
+                      </Table.Tr>
+                    ))}
+                  </Table.Tbody>
+                </Table>
+              ) : (
+                <Text c="dimmed">No room change requests found.</Text>
               )}
             </Box>
           )}
+
+          {/* STUDENT ROOM CHANGE MODAL (Only rendered if they have an active allotment) */}
+          {isStudent && myAllotment && (
+            <RoomChangeRequestForm
+              opened={changeModalOpen}
+              onClose={() => setChangeModalOpen(false)}
+              onSubmit={handleRequestRoomChange}
+              loading={actionLoading}
+              availableRooms={availableRooms}
+            />
+          )}
         </Box>
       )}
-    </Transition>
+    </Box>
   );
 }
 

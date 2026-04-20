@@ -628,7 +628,7 @@ export default function RoomAllocationManagement() {
                 <Button
                   leftSection={<IconPlus size={16} />}
                   onClick={() => setBatchAllocationOpen(true)}
-                  color="orange"
+                  color="blue"
                 >
                   Batch Allocate
                 </Button>
@@ -636,7 +636,7 @@ export default function RoomAllocationManagement() {
 
               <Alert
                 icon={<IconAlertCircle />}
-                color="orange"
+                color="gray"
                 title="Batch Allocation"
               >
                 Allocate rooms to multiple students from a specific academic
@@ -662,7 +662,7 @@ export default function RoomAllocationManagement() {
 
               <Alert
                 icon={<IconAlertCircle />}
-                color="blue"
+                color="gray"
                 title="Room Creation"
               >
                 Create hostel rooms before allocating them to students. Specify
@@ -674,7 +674,7 @@ export default function RoomAllocationManagement() {
                   <Title order={4} mb="md">
                     Created Rooms ({rooms.length})
                   </Title>
-                  <Table striped>
+                  <Table striped highlightOnHover>
                     <Table.Thead>
                       <Table.Tr>
                         <Table.Th>Hall</Table.Th>
@@ -721,7 +721,7 @@ export default function RoomAllocationManagement() {
 
               <Alert
                 icon={<IconAlertCircle />}
-                color="blue"
+                color="gray"
                 title="Individual Allocation"
               >
                 Allocate specific rooms to individual students. For allocating
@@ -733,7 +733,7 @@ export default function RoomAllocationManagement() {
                   <Title order={4} mb="md">
                     Room Allocations ({allocations.length})
                   </Title>
-                  <Table striped>
+                  <Table striped highlightOnHover>
                     <Table.Thead>
                       <Table.Tr>
                         <Table.Th>Student</Table.Th>
@@ -745,12 +745,26 @@ export default function RoomAllocationManagement() {
                     <Table.Tbody>
                       {allocations.map((allocation) => (
                         <Table.Tr key={allocation.id}>
-                          <Table.Td>{allocation.student_name}</Table.Td>
-                          <Table.Td>{allocation.room_number}</Table.Td>
                           <Table.Td>
-                            <Badge>{allocation.status}</Badge>
+                            {allocation.student_name || "N/A"}
                           </Table.Td>
-                          <Table.Td>{allocation.allocation_date}</Table.Td>
+                          <Table.Td>
+                            {allocation.room?.room_number || "N/A"}
+                          </Table.Td>
+                          <Table.Td>
+                            <Badge
+                              color={allocation.is_active ? "green" : "gray"}
+                            >
+                              {allocation.is_active ? "active" : "inactive"}
+                            </Badge>
+                          </Table.Td>
+                          <Table.Td>
+                            {allocation.allotted_at
+                              ? new Date(
+                                  allocation.allotted_at,
+                                ).toLocaleDateString()
+                              : "-"}
+                          </Table.Td>
                         </Table.Tr>
                       ))}
                     </Table.Tbody>
@@ -767,7 +781,7 @@ export default function RoomAllocationManagement() {
               <Title order={3}>Room Change Requests</Title>
               <Alert
                 icon={<IconAlertCircle />}
-                color="blue"
+                color="gray"
                 title="Manage Room Changes"
               >
                 Review and approve/reject student room change requests. Each
@@ -777,7 +791,7 @@ export default function RoomAllocationManagement() {
 
               {roomChanges.length > 0 ? (
                 <Card withBorder>
-                  <Table striped>
+                  <Table striped highlightOnHover>
                     <Table.Thead>
                       <Table.Tr>
                         <Table.Th>Student</Table.Th>
@@ -884,7 +898,7 @@ export default function RoomAllocationManagement() {
 
               <Alert
                 icon={<IconAlertCircle />}
-                color="blue"
+                color="gray"
                 title="Room Change Request"
               >
                 Submit a room change request if you wish to move to a different
@@ -897,7 +911,7 @@ export default function RoomAllocationManagement() {
                   <Title order={4} mb="md">
                     Your Room Change Requests
                   </Title>
-                  <Table striped>
+                  <Table striped highlightOnHover>
                     <Table.Thead>
                       <Table.Tr>
                         <Table.Th>From Room</Table.Th>
@@ -970,7 +984,11 @@ export default function RoomAllocationManagement() {
             {allocations.length > 0 ? (
               <Card withBorder p="lg">
                 <div style={{ overflowX: "auto", width: "100%" }}>
-                  <Table striped style={{ width: "100%", minWidth: "900px" }}>
+                  <Table
+                    striped
+                    highlightOnHover
+                    style={{ width: "100%", minWidth: "900px" }}
+                  >
                     <Table.Thead>
                       <Table.Tr>
                         <Table.Th>Student</Table.Th>
@@ -1079,7 +1097,7 @@ export default function RoomAllocationManagement() {
                 </Button>
               </Group>
               <Card withBorder>
-                <Table striped>
+                <Table striped highlightOnHover>
                   <Table.Thead>
                     <Table.Tr>
                       <Table.Th>Date</Table.Th>
@@ -1112,7 +1130,7 @@ export default function RoomAllocationManagement() {
                 </Button>
               </Group>
               <Card withBorder>
-                <Table striped>
+                <Table striped highlightOnHover>
                   <Table.Thead>
                     <Table.Tr>
                       <Table.Th>Start</Table.Th>
@@ -1142,7 +1160,7 @@ export default function RoomAllocationManagement() {
             <Stack>
               <Title order={3}>Room Vacations Verification</Title>
               <Card withBorder>
-                <Table striped>
+                <Table striped highlightOnHover>
                   <Table.Thead>
                     <Table.Tr>
                       <Table.Th>Student</Table.Th>
@@ -1198,7 +1216,7 @@ export default function RoomAllocationManagement() {
             <Stack>
               <Title order={3}>Extended Stays Approval</Title>
               <Card withBorder>
-                <Table striped>
+                <Table striped highlightOnHover>
                   <Table.Thead>
                     <Table.Tr>
                       <Table.Th>Student</Table.Th>

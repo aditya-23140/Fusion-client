@@ -266,29 +266,41 @@ export default function LeaveManagement() {
         {/* Stats for staff */}
         {isStaff && (
           <Group grow>
-            <Card withBorder p="lg">
+            <Card
+              withBorder
+              p="lg"
+              style={{ borderLeft: "3px solid var(--mantine-color-yellow-5)" }}
+            >
               <Stack gap={4}>
-                <Text size="sm" fw={500} c="dimmed">
+                <Text size="xs" fw={700} c="dimmed" tt="uppercase">
                   Pending
                 </Text>
-                <Text fw={700} size="xl" c="yellow">
+                <Text fw={700} size="xl">
                   {pendingCount}
                 </Text>
               </Stack>
             </Card>
-            <Card withBorder p="lg">
+            <Card
+              withBorder
+              p="lg"
+              style={{ borderLeft: "3px solid var(--mantine-color-green-5)" }}
+            >
               <Stack gap={4}>
-                <Text size="sm" fw={500} c="dimmed">
+                <Text size="xs" fw={700} c="dimmed" tt="uppercase">
                   Approved
                 </Text>
-                <Text fw={700} size="xl" c="green">
+                <Text fw={700} size="xl">
                   {approvedCount}
                 </Text>
               </Stack>
             </Card>
-            <Card withBorder p="lg">
+            <Card
+              withBorder
+              p="lg"
+              style={{ borderLeft: "3px solid var(--mantine-color-blue-5)" }}
+            >
               <Stack gap={4}>
-                <Text size="sm" fw={500} c="dimmed">
+                <Text size="xs" fw={700} c="dimmed" tt="uppercase">
                   Total
                 </Text>
                 <Text fw={700} size="xl">
