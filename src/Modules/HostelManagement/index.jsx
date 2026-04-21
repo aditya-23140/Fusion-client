@@ -60,12 +60,14 @@ export default function HostelManagementPage() {
         tabItems: [
           { title: "Hall Management" },
           { title: "Hostel Allocation" },
+          { title: "Global Notices" },
           { title: "Inventory" },
           { title: "Semester End" },
         ],
         tabComponents: [
           HallManagement,
           AccommodationAllotment,
+          NoticeBoard,
           InventoryManagement,
           SemesterEndProcess,
         ],
@@ -132,6 +134,7 @@ export default function HostelManagementPage() {
         { title: "Leave Requests" },
         { title: "Complaints" },
         { title: "Fines" },
+        { title: "Attendance" },
         { title: "Hostel Allocation" },
       ],
       tabComponents: [
@@ -140,6 +143,7 @@ export default function HostelManagementPage() {
         LeaveManagement,
         ComplaintManagement,
         FineManagement,
+        AttendanceManagement,
         AccommodationAllotment,
       ],
     };
@@ -210,6 +214,11 @@ export default function HostelManagementPage() {
                   <ActiveComponent
                     userRole={userRole}
                     setActiveTab={setActiveTab}
+                    onlyGlobal={
+                      userRole === "super_admin" &&
+                      tabItems[parseInt(activeTab, 10)]?.title ===
+                        "Global Notices"
+                    }
                   />
                 </Box>
               </>

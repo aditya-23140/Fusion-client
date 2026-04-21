@@ -78,7 +78,7 @@ BoardEmptyState.propTypes = {
   icon: PropTypes.elementType,
 };
 
-export default function NoticeBoard() {
+export default function NoticeBoard({ onlyGlobal = false }) {
   const [notices, setNotices] = useState([]);
   const [history, setHistory] = useState([]);
   const [hostels, setHostels] = useState([]);
@@ -106,8 +106,17 @@ export default function NoticeBoard() {
         isStaff ? fetchHostels() : Promise.resolve([]),
       ]);
 
-      setNotices(activeData?.results || activeData || []);
-      setHistory(historyData?.results || historyData || []);
+      let active = activeData?.results || activeData || [];
+      let hist = historyData?.results || historyData || [];
+
+      if (onlyGlobal) {
+        // Global notices have no associated hostel/hall
+        active = active.filter((n) => !n.hostel && !n.hostel_name);
+        hist = hist.filter((n) => !n.hostel && !n.hostel_name);
+      }
+
+      setNotices(active);
+      setHistory(hist);
       setHostels(hostelsData || []);
     } catch (err) {
       notifications.show({
@@ -221,10 +230,12 @@ export default function NoticeBoard() {
         <Group justify="space-between" align="flex-end">
           <Stack gap={0}>
             <Title order={1} fw={800} style={{ letterSpacing: "-1px" }}>
-              Hostel Notice Board
+              {onlyGlobal ? "Global Announcements" : "Hostel Notice Board"}
             </Title>
             <Text c="dimmed" size="sm">
-              Official updates and announcements for residents
+              {onlyGlobal
+                ? "University-wide updates and administrative notices"
+                : "Official updates and announcements for residents"}
             </Text>
           </Stack>
 
@@ -407,3 +418,7 @@ export default function NoticeBoard() {
     </Container>
   );
 }
+
+NoticeBoard.propTypes = {
+  onlyGlobal: PropTypes.bool,
+};

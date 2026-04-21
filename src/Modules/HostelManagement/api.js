@@ -62,6 +62,10 @@ import {
   guestBookingApproveRoute,
   guestBookingCheckInRoute,
   guestBookingCheckOutRoute,
+  // Attendance Management
+  attendanceUploadRoute,
+  attendanceSummaryRoute,
+  studentAttendanceStatsRoute,
   // Batch Identification & Management
   syncBatchRoute,
   // Hall Room Routes
@@ -751,6 +755,44 @@ export const fetchAttendance = async (hallId) => {
     console.error(`Failed to fetch attendance for hall ${hallId}:`, error);
     throw error;
   }
+};
+
+/**
+ * Upload attendance from Excel
+ * @param {string} hallId
+ * @param {string} date
+ * @param {File} file
+ */
+export const uploadAttendance = async (hallId, date, file) => {
+  const formData = new FormData();
+  formData.append("hall_id", hallId);
+  formData.append("date", date);
+  formData.append("file", file);
+  const response = await apiClient.post(attendanceUploadRoute, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return response.data;
+};
+
+/**
+ * Fetch attendance summary statistics for a hall
+ * @param {string} hallId
+ * @param {number} page
+ */
+export const fetchAttendanceSummary = async (hallId, page = 1) => {
+  const response = await apiClient.get(attendanceSummaryRoute, {
+    params: { hall_id: hallId, page },
+  });
+  return response.data;
+};
+
+/**
+ * Fetch individual student attendance stats and history
+ * @param {string} studentId
+ */
+export const fetchStudentAttendanceStats = async (studentId = "") => {
+  const response = await apiClient.get(studentAttendanceStatsRoute(studentId));
+  return response.data;
 };
 
 // ══════════════════════════════════════════════════════════════

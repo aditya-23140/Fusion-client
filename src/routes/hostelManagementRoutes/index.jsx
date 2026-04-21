@@ -118,7 +118,13 @@ export const guestBookingCheckOutRoute = (bookingId) =>
 
 // Attendance Management
 export const listAttendanceRoute = (hallId) =>
-  `${BASE_URL}/attendance/hall/${hallId}/`;
+  `${BASE_URL}/attendance/hostel/${hallId}/`;
+export const attendanceUploadRoute = `${BASE_URL}/attendance/upload/`;
+export const attendanceSummaryRoute = `${BASE_URL}/attendance/summary/`;
+export const studentAttendanceStatsRoute = (studentId = "") =>
+  studentId
+    ? `${BASE_URL}/attendance/student/${studentId}/`
+    : `${BASE_URL}/attendance/student/`;
 
 // Batch Identification & Management
 export const batchesRoute = `${host}/programme_curriculum/api/admin_batches/`;

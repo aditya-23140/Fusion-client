@@ -5,13 +5,27 @@
 
 import React from "react";
 import PropTypes from "prop-types";
-import { Table, Text, ScrollArea, Paper, Center, Loader } from "@mantine/core";
+import {
+  Table,
+  Text,
+  ScrollArea,
+  Paper,
+  Center,
+  Loader,
+  Pagination,
+  Group,
+  Divider,
+} from "@mantine/core";
 
 function DataTable({
   columns,
   data,
   loading,
   emptyMessage = "No data available",
+  totalItems = 0,
+  itemsPerPage = 50,
+  activePage = 1,
+  onPageChange,
 }) {
   if (loading) {
     return (
@@ -28,6 +42,8 @@ function DataTable({
       </Center>
     );
   }
+
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
 
   return (
     <Paper shadow="sm" radius="md" withBorder>
@@ -53,6 +69,25 @@ function DataTable({
           </Table.Tbody>
         </Table>
       </ScrollArea>
+
+      {onPageChange && totalPages > 1 && (
+        <>
+          <Divider />
+          <Group justify="space-between" p="md">
+            <Text size="sm" c="dimmed">
+              Showing {data.length} of {totalItems} items
+            </Text>
+            <Pagination
+              total={totalPages}
+              value={activePage}
+              onChange={onPageChange}
+              size="sm"
+              radius="md"
+              withEdges
+            />
+          </Group>
+        </>
+      )}
     </Paper>
   );
 }
@@ -72,6 +107,10 @@ DataTable.propTypes = {
   ).isRequired,
   loading: PropTypes.bool.isRequired,
   emptyMessage: PropTypes.string,
+  totalItems: PropTypes.number,
+  itemsPerPage: PropTypes.number,
+  activePage: PropTypes.number,
+  onPageChange: PropTypes.func,
 };
 
 export default DataTable;
