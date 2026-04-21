@@ -146,3 +146,4 @@ export const hostelDeleteRoute = (id) => `${BASE_URL}/hostels/${id}/delete/`;
 export const hostelStaffRoute = (id) => `${BASE_URL}/hostels/${id}/staff/`;
 export const hostelBulkBatchAllotRoute = (id) =>
   `${BASE_URL}/hostels/${id}/bulk-batch-allot/`;
+export const hostelBulkVacateRoute = `${BASE_URL}/hostels/bulk-vacate/`;

@@ -82,6 +82,7 @@ import {
   hostelDeleteRoute,
   hostelStaffRoute,
   hostelBulkBatchAllotRoute,
+  hostelBulkVacateRoute,
 } from "../../routes/hostelManagementRoutes";
 
 // ══════════════════════════════════════════════════════════════
@@ -1049,3 +1050,9 @@ export const bulkBatchAllotHostel = async (hallId, data) => {
 };
 
 export default apiClient;
+export const processBulkHostelVacation = async (hostelIds) => {
+  const response = await apiClient.post(hostelBulkVacateRoute, {
+    hostel_ids: hostelIds,
+  });
+  return response.data;
+};

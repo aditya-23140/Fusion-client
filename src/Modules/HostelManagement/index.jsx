@@ -27,11 +27,30 @@ import FineManagement from "./FineManagement";
 import InventoryManagement from "./InventoryManagement";
 import AttendanceManagement from "./AttendanceManagement";
 import AccommodationAllotment from "./components/allotment/AccommodationAllotment";
+import SemesterEndProcess from "./SemesterEndProcess";
 
 export default function HostelManagementPage() {
   const [activeTab, setActiveTab] = useState("0");
   const dispatch = useDispatch();
   const userRole = useSelector((state) => state.user.role);
+  const [isAllocated, setIsAllocated] = useState(true);
+
+  useEffect(() => {
+    const checkResidency = async () => {
+      if (userRole === "student") {
+        try {
+          const { fetchMyAllotment } = await import("./api");
+          await fetchMyAllotment();
+          setIsAllocated(true);
+        } catch (error) {
+          if (error.response?.status === 403) {
+            setIsAllocated(false);
+          }
+        }
+      }
+    };
+    checkResidency();
+  }, [userRole]);
 
   // Define tabs based on user role from Redux
   const getTabsAndComponents = () => {
@@ -42,11 +61,13 @@ export default function HostelManagementPage() {
           { title: "Hall Management" },
           { title: "Hostel Allocation" },
           { title: "Inventory" },
+          { title: "Semester End" },
         ],
         tabComponents: [
           HallManagement,
           AccommodationAllotment,
           InventoryManagement,
+          SemesterEndProcess,
         ],
       };
     }
@@ -163,18 +184,36 @@ export default function HostelManagementPage() {
               </Alert>
             )}
 
-            <ModuleTabs
-              tabs={tabItems}
-              activeTab={activeTab}
-              setActiveTab={setActiveTab}
-            />
+            {userRole === "student" && !isAllocated ? (
+              <Box py="50px">
+                <Alert
+                  icon={<IconAlertCircle />}
+                  title="Access Restricted"
+                  color="red"
+                  variant="filled"
+                >
+                  Your account is not currently associated with an active hostel
+                  allotment. Student features in this module are restricted to
+                  residents only. Please contact the Hostel Administration if
+                  you believe this is an error or if you are awaiting admission.
+                </Alert>
+              </Box>
+            ) : (
+              <>
+                <ModuleTabs
+                  tabs={tabItems}
+                  activeTab={activeTab}
+                  setActiveTab={setActiveTab}
+                />
 
-            <Box style={{ minHeight: "60vh" }}>
-              <ActiveComponent
-                userRole={userRole}
-                setActiveTab={setActiveTab}
-              />
-            </Box>
+                <Box style={{ minHeight: "60vh" }}>
+                  <ActiveComponent
+                    userRole={userRole}
+                    setActiveTab={setActiveTab}
+                  />
+                </Box>
+              </>
+            )}
           </Flex>
         </Container>
       </Box>
