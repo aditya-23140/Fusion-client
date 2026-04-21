@@ -8,8 +8,9 @@
  * - student: Leave, Complaints, Fines, Bookings, Room Allocation, Vacation, Extended Stay
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Container, Box, Flex, Alert } from "@mantine/core";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ModalsProvider } from "@mantine/modals";
 import { IconAlertCircle } from "@tabler/icons-react";
 import { useDispatch, useSelector } from "react-redux";
@@ -30,10 +31,73 @@ import AccommodationAllotment from "./components/allotment/AccommodationAllotmen
 import SemesterEndProcess from "./SemesterEndProcess";
 
 export default function HostelManagementPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("0");
   const dispatch = useDispatch();
   const userRole = useSelector((state) => state.user.role);
   const [isAllocated, setIsAllocated] = useState(true);
+
+  // Map sub-paths to tab indices
+  const pathToTab = useMemo(() => {
+    const baseMapping = {
+      "guest-booking": "0",
+      "notice-board": "1",
+      leave: "2",
+      complaints: "3",
+      fines: "4",
+    };
+
+    if (userRole === "super_admin") {
+      return {
+        "hall-management": "0",
+        "room-allocation": "1",
+        "notice-board": "2",
+        inventory: "3",
+        "semester-end": "4",
+      };
+    }
+
+    if (userRole === "caretaker" || userRole === "warden") {
+      return {
+        ...baseMapping,
+        inventory: "5",
+        attendance: "6",
+        "room-allocation": "7",
+      };
+    }
+
+    // Student
+    return {
+      ...baseMapping,
+      attendance: "5",
+      "room-allocation": "6",
+    };
+  }, [userRole]);
+
+  useEffect(() => {
+    const subPath = location.pathname.split("/hostel-management/")[1];
+    if (subPath) {
+      const cleanPath = subPath.replace(/\/$/, ""); // remove trailing slash
+      if (pathToTab[cleanPath]) {
+        setActiveTab(pathToTab[cleanPath]);
+      }
+    } else {
+      setActiveTab("0");
+    }
+  }, [location.pathname, pathToTab]);
+
+  const handleTabChange = (val) => {
+    setActiveTab(val);
+    const tabName = Object.keys(pathToTab).find(
+      (key) => pathToTab[key] === val,
+    );
+    if (tabName) {
+      navigate(`/hostel-management/${tabName}/`);
+    } else {
+      navigate(`/hostel-management/`);
+    }
+  };
 
   useEffect(() => {
     const checkResidency = async () => {
@@ -207,13 +271,13 @@ export default function HostelManagementPage() {
                 <ModuleTabs
                   tabs={tabItems}
                   activeTab={activeTab}
-                  setActiveTab={setActiveTab}
+                  setActiveTab={handleTabChange}
                 />
 
                 <Box style={{ minHeight: "60vh" }}>
                   <ActiveComponent
                     userRole={userRole}
-                    setActiveTab={setActiveTab}
+                    setActiveTab={handleTabChange}
                     onlyGlobal={
                       userRole === "super_admin" &&
                       tabItems[parseInt(activeTab, 10)]?.title ===
