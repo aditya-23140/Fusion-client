@@ -29,6 +29,7 @@ import InventoryManagement from "./InventoryManagement";
 import AttendanceManagement from "./AttendanceManagement";
 import AccommodationAllotment from "./components/allotment/AccommodationAllotment";
 import SemesterEndProcess from "./SemesterEndProcess";
+import SecurityManagement from "./SecurityManagement";
 
 export default function HostelManagementPage() {
   const location = useLocation();
@@ -64,6 +65,7 @@ export default function HostelManagementPage() {
         inventory: "5",
         attendance: "6",
         "room-allocation": "7",
+        security: "8",
       };
     }
 
@@ -72,6 +74,7 @@ export default function HostelManagementPage() {
       ...baseMapping,
       attendance: "5",
       "room-allocation": "6",
+      security: "7",
     };
   }, [userRole]);
 
@@ -150,6 +153,7 @@ export default function HostelManagementPage() {
           { title: "Inventory" },
           { title: "Attendance" },
           { title: "Hostel Allocation" },
+          { title: "Security" },
         ],
         tabComponents: [
           GuestRoomBookings,
@@ -160,6 +164,7 @@ export default function HostelManagementPage() {
           InventoryManagement,
           AttendanceManagement,
           AccommodationAllotment,
+          SecurityManagement,
         ],
       };
     }
@@ -176,6 +181,7 @@ export default function HostelManagementPage() {
           { title: "Inventory" },
           { title: "Attendance" },
           { title: "Hostel Allocation" },
+          { title: "Security" },
         ],
         tabComponents: [
           GuestRoomBookings,
@@ -186,6 +192,7 @@ export default function HostelManagementPage() {
           InventoryManagement,
           AttendanceManagement,
           AccommodationAllotment,
+          SecurityManagement,
         ],
       };
     }
@@ -200,6 +207,7 @@ export default function HostelManagementPage() {
         { title: "Fines" },
         { title: "Attendance" },
         { title: "Hostel Allocation" },
+        { title: "Security" },
       ],
       tabComponents: [
         GuestRoomBookings,
@@ -209,6 +217,7 @@ export default function HostelManagementPage() {
         FineManagement,
         AttendanceManagement,
         AccommodationAllotment,
+        SecurityManagement,
       ],
     };
   };
