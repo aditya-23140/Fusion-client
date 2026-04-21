@@ -367,8 +367,8 @@ export const rejectRoomChange = async (changeId, data) => {
 // HM-WF-105: FINE MANAGEMENT API CALLS
 // ══════════════════════════════════════════════════════════════
 
-export const fetchFines = async () => {
-  const response = await apiClient.get(finesRoute);
+export const fetchFines = async (params = {}) => {
+  const response = await apiClient.get(finesRoute, { params });
   return response.data;
 };
 
