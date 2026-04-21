@@ -32,9 +32,9 @@ import {
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import { useSelector } from "react-redux";
-import ComplaintCard from "./components/ComplaintCard";
-import CreateComplaintModal from "./components/CreateComplaintModal";
-import ComplaintDetailDrawer from "./components/ComplaintDetailDrawer";
+import ComplaintCard from "./components/complaints/ComplaintCard";
+import CreateComplaintModal from "./components/complaints/CreateComplaintModal";
+import ComplaintDetailDrawer from "./components/complaints/ComplaintDetailDrawer";
 import {
   fetchComplaints,
   fetchMyComplaints,

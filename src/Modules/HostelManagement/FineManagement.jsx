@@ -53,7 +53,7 @@ import {
   waiveFine,
   imposeFine,
 } from "./api";
-import ImposeFineModal from "./components/ImposeFineModal";
+import ImposeFineModal from "./components/fines/ImposeFineModal";
 
 export default function FineManagement() {
   const [fines, setFines] = useState([]);
